@@ -1,0 +1,13 @@
+.venv
+.vscode
+venv
+/logs
+logs.log
+config.yaml
+/groups.txt
+__pycache__
+dist
+*.session
+*.json
+*.txt
+.pytest_cache
