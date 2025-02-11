@@ -1,0 +1,47 @@
+# Основные настройки
+api:
+  openai_api_key: "your-api-key-here"  # Ключ API OpenAI
+  chat_gpt_model: "gpt-3.5-turbo"  # Модель для рерайта текста
+
+# Настройки аккаунтов Telegram
+telegram:
+  session_directory: "accounts/"  # Папка с session-файлами аккаунтов
+  proxy:
+    enabled: true  # Использовать прокси (true/false)
+    list: "proxies.txt"  # Файл с прокси в формате IP:Port:Username:Password
+
+# Настройки клонирования
+cloning:
+  mode: "history"  # Режим работы: history (по истории) или live (в реальном времени)
+  post_range: [20, 300]  # Диапазон постов для клонирования (только для history)
+  source_channels_file: "Источники.txt"  # Файл с каналами-донорами
+  target_channels_file: "Цели.txt"  # Файл с целевыми каналами и аккаунтами
+
+# Настройки уникализации
+uniqueness:
+  text:
+    rewrite: true  # Использовать рерайт через ChatGPT
+    symbol_masking: true  # Маскировка RU-EN символов
+    replacements_file: "Замены.txt"  # Файл с заменами слов
+  image:
+    crop: [1, 4]  # Кадрирование (в пикселях)
+    brightness: [1, 7]  # Изменение яркости (%)
+    contrast: [1, 7]  # Изменение контраста (%)
+    rotation: true  # Изменение градуса поворота
+    metadata: "replace"  # Удаление или замена метаданных
+    filters: true  # Применение скрытых фильтров
+  video:
+    hash_change: true  # Изменение хеша видео
+    watermark: true  # Невидимые элементы (сетка и т. д.)
+    frame_rate_variation: true  # Незначительное изменение FPS
+    audio_speed: [2, 4]  # Изменение скорости аудио (%)
+
+# Настройки задержек
+timeouts:
+  post_delay: [5, 15]  # Задержка перед отправкой сообщений (в секундах)
+  flood_wait_limit: 300  # Максимальное время ожидания при флуд-ограничении (в секундах)
+
+# Логирование
+logging:
+  log_file: "logs/app.log"  # Основной лог-файл
+  error_log_file: "logs/errors.log"  # Файл логирования ошибок
