@@ -1,41 +1,40 @@
 import sys
 import yaml
-from typing import Tuple, List, Dict
+from typing import Tuple
 from rich.text import Text
 from rich.panel import Panel
 from pydantic import BaseModel, Field
 from src.logger import logger, console
 
 
-# Основные настройки API
 class APISettings(BaseModel):
     openai_api_key: str = Field(..., description="Ключ API OpenAI")
     chat_gpt_model: str = Field(default="gpt-3.5-turbo", description="Модель для рерайта текста")
 
-# Настройки прокси
+
 class ProxySettings(BaseModel):
     enabled: bool = Field(default=False, description="Использовать прокси")
     list: str = Field(default="proxies.txt", description="Файл с прокси")
 
-# Настройки Telegram
+
 class TelegramSettings(BaseModel):
     session_directory: str = Field(default="accounts/", description="Папка с session-файлами")
     proxy: ProxySettings
 
-# Настройки клонирования
+
 class CloningSettings(BaseModel):
     mode: str = Field(default="history", description="Режим работы: history или live")
     post_range: Tuple[int, int] = Field(default=(20, 300), description="Диапазон постов для клонирования")
     source_channels_file: str = Field(default="Источники.txt", description="Файл с каналами-донорами")
     target_channels_file: str = Field(default="Цели.txt", description="Файл с целевыми каналами")
 
-# Уникализация текста
+
 class TextUniquenessSettings(BaseModel):
     rewrite: bool = Field(default=True, description="Использовать рерайт через ChatGPT")
     symbol_masking: bool = Field(default=True, description="Маскировка RU-EN символов")
     replacements_file: str = Field(default="Замены.txt", description="Файл с заменами слов")
 
-# Уникализация изображений
+
 class ImageUniquenessSettings(BaseModel):
     crop: Tuple[int, int] = Field(default=(1, 4), description="Кадрирование в пикселях")
     brightness: Tuple[int, int] = Field(default=(1, 7), description="Изменение яркости в %")
@@ -44,30 +43,30 @@ class ImageUniquenessSettings(BaseModel):
     metadata: str = Field(default="replace", description="Удаление или замена метаданных")
     filters: bool = Field(default=True, description="Применение скрытых фильтров")
 
-# Уникализация видео
+
 class VideoUniquenessSettings(BaseModel):
     hash_change: bool = Field(default=True, description="Изменение хеша видео")
     watermark: bool = Field(default=True, description="Добавление невидимых элементов")
     frame_rate_variation: bool = Field(default=True, description="Изменение FPS")
     audio_speed: Tuple[int, int] = Field(default=(2, 4), description="Изменение скорости аудио в %")
 
-# Настройки уникализации
+
 class UniquenessSettings(BaseModel):
     text: TextUniquenessSettings
     image: ImageUniquenessSettings
     video: VideoUniquenessSettings
 
-# Настройки задержек
+
 class TimeoutSettings(BaseModel):
     post_delay: Tuple[int, int] = Field(default=(5, 15), description="Задержка перед отправкой в сек")
     flood_wait_limit: int = Field(default=300, description="Максимальное время ожидания при флуд-ограничении")
 
-# Логирование
+
 class LoggingSettings(BaseModel):
     log_file: str = Field(default="logs/app.log", description="Основной лог-файл")
     error_log_file: str = Field(default="logs/errors.log", description="Файл логирования ошибок")
 
-# Главная модель конфига
+
 class Config(BaseModel):
     api: APISettings
     telegram: TelegramSettings
@@ -153,4 +152,3 @@ def print_config(config: Config) -> None:
 
     # Вывод панели с конфигом
     console.print(Panel(config_text, title="[bold magenta]Конфигурация[/]", border_style="cyan"))
-
