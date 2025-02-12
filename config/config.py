@@ -7,72 +7,74 @@ from pydantic import BaseModel, Field
 from src.logger import logger, console
 
 
+# Основные настройки API
+class APISettings(BaseModel):
+    openai_api_key: str = Field(..., description="Ключ API OpenAI")
+    chat_gpt_model: str = Field(default="gpt-3.5-turbo", description="Модель для рерайта текста")
 
-class ProxyConfig(BaseModel):
-    proxy: str = Field(
-        default="",
-        description="Прокси-сервер в формате IP:Port:Username:Password"
-    )
+# Настройки прокси
+class ProxySettings(BaseModel):
+    enabled: bool = Field(default=False, description="Использовать прокси")
+    list: str = Field(default="proxies.txt", description="Файл с прокси")
 
+# Настройки Telegram
+class TelegramSettings(BaseModel):
+    session_directory: str = Field(default="accounts/", description="Папка с session-файлами")
+    proxy: ProxySettings
 
-class ChannelConfig(BaseModel):
-    source_channels: List[str] = Field(default=[], description="Список источников")
-    target_channels: Dict[str, str] = Field(
-        default={},
-        description="Список целевых каналов в формате {source: target}"
-    )
+# Настройки клонирования
+class CloningSettings(BaseModel):
+    mode: str = Field(default="history", description="Режим работы: history или live")
+    post_range: Tuple[int, int] = Field(default=(20, 300), description="Диапазон постов для клонирования")
+    source_channels_file: str = Field(default="Источники.txt", description="Файл с каналами-донорами")
+    target_channels_file: str = Field(default="Цели.txt", description="Файл с целевыми каналами")
 
+# Уникализация текста
+class TextUniquenessSettings(BaseModel):
+    rewrite: bool = Field(default=True, description="Использовать рерайт через ChatGPT")
+    symbol_masking: bool = Field(default=True, description="Маскировка RU-EN символов")
+    replacements_file: str = Field(default="Замены.txt", description="Файл с заменами слов")
 
-class ModeConfig(BaseModel):
-    mode: str = Field(
-        default="history",
-        description="Режим работы: history или realtime"
-    )
-    history_range: Tuple[int, int] = Field(
-        default=(20, 300),
-        description="Диапазон постов для клонирования"
-    )
+# Уникализация изображений
+class ImageUniquenessSettings(BaseModel):
+    crop: Tuple[int, int] = Field(default=(1, 4), description="Кадрирование в пикселях")
+    brightness: Tuple[int, int] = Field(default=(1, 7), description="Изменение яркости в %")
+    contrast: Tuple[int, int] = Field(default=(1, 7), description="Изменение контраста в %")
+    rotation: bool = Field(default=True, description="Изменение градуса поворота")
+    metadata: str = Field(default="replace", description="Удаление или замена метаданных")
+    filters: bool = Field(default=True, description="Применение скрытых фильтров")
 
+# Уникализация видео
+class VideoUniquenessSettings(BaseModel):
+    hash_change: bool = Field(default=True, description="Изменение хеша видео")
+    watermark: bool = Field(default=True, description="Добавление невидимых элементов")
+    frame_rate_variation: bool = Field(default=True, description="Изменение FPS")
+    audio_speed: Tuple[int, int] = Field(default=(2, 4), description="Изменение скорости аудио в %")
 
-class DelayConfig(BaseModel):
-    delay_range: Tuple[int, int] = Field(
-        default=(5, 15),
-        description="Диапазон задержек перед отправкой постов"
-    )
-    flood_wait_limit: int = Field(
-        default=600,
-        description="Максимальное время ожидания при флуд-лимите"
-    )
+# Настройки уникализации
+class UniquenessSettings(BaseModel):
+    text: TextUniquenessSettings
+    image: ImageUniquenessSettings
+    video: VideoUniquenessSettings
 
+# Настройки задержек
+class TimeoutSettings(BaseModel):
+    post_delay: Tuple[int, int] = Field(default=(5, 15), description="Задержка перед отправкой в сек")
+    flood_wait_limit: int = Field(default=300, description="Максимальное время ожидания при флуд-ограничении")
 
-class UniqueConfig(BaseModel):
-    text_replacement: Dict[str, str] = Field(default={}, description="Замена текста")
-    image_unique_params: Dict[str, int] = Field(
-        default={}, description="Параметры уникализации изображений"
-    )
-    video_unique_params: Dict[str, int] = Field(
-        default={}, description="Параметры уникализации видео"
-    )
-    text_unique_mode: str = Field(
-        default="chatgpt",
-        description="Метод уникализации текста: chatgpt или символы"
-    )
+# Логирование
+class LoggingSettings(BaseModel):
+    log_file: str = Field(default="logs/app.log", description="Основной лог-файл")
+    error_log_file: str = Field(default="logs/errors.log", description="Файл логирования ошибок")
 
-
-class LoggingConfig(BaseModel):
-    log_file: str = Field(
-        default="logs/bot.log",
-        description="Файл для записи логов"
-    )
-
-
+# Главная модель конфига
 class Config(BaseModel):
-    proxy: ProxyConfig = ProxyConfig()
-    channels: ChannelConfig = ChannelConfig()
-    mode: ModeConfig = ModeConfig()
-    delay: DelayConfig = DelayConfig()
-    unique: UniqueConfig = UniqueConfig()
-    logging: LoggingConfig = LoggingConfig()
+    api: APISettings
+    telegram: TelegramSettings
+    cloning: CloningSettings
+    uniqueness: UniquenessSettings
+    timeouts: TimeoutSettings
+    logging: LoggingSettings
 
 
 class ConfigManager:
@@ -95,15 +97,60 @@ class ConfigManager:
 def print_config(config: Config) -> None:
     config_text = Text()
 
-    config_text.append("  Режим работы: ", style="cyan")
-    config_text.append(f"{config.mode}\n", style="green")
-    config_text.append("  Источники: ", style="cyan")
-    config_text.append(f"{', '.join(config.source_channels)}\n", style="green")
-    config_text.append("  Целевые каналы: ", style="cyan")
-    config_text.append(f"{config.target_channels}\n", style="green")
-    config_text.append("  Задержка перед отправкой: ", style="cyan")
-    config_text.append(f"{config.delay_range[0]} - {config.delay_range[1]} сек\n", style="green")
-    config_text.append("  Лог-файл: ", style="cyan")
-    config_text.append(f"{config.log_file}\n", style="green")
+    # API настройки
+    config_text.append("API Настройки:\n", style="bold cyan")
+    config_text.append("  OpenAI API Key: ", style="cyan")
+    config_text.append(f"{config.api.openai_api_key}\n", style="green")
+    config_text.append("  ChatGPT Model: ", style="cyan")
+    config_text.append(f"{config.api.chat_gpt_model}\n\n", style="green")
 
+    # Telegram настройки
+    config_text.append("Telegram Настройки:\n", style="bold cyan")
+    config_text.append("  Папка с сессиями: ", style="cyan")
+    config_text.append(f"{config.telegram.session_directory}\n", style="green")
+    config_text.append("  Использовать прокси: ", style="cyan")
+    config_text.append(f"{'Да' if config.telegram.proxy.enabled else 'Нет'}\n", style="green")
+    config_text.append("  Файл с прокси: ", style="cyan")
+    config_text.append(f"{config.telegram.proxy.list}\n\n", style="green")
+
+    # Настройки клонирования
+    config_text.append("Настройки клонирования:\n", style="bold cyan")
+    config_text.append("  Режим работы: ", style="cyan")
+    config_text.append(f"{config.cloning.mode}\n", style="green")
+    config_text.append("  Диапазон постов: ", style="cyan")
+    config_text.append(f"{config.cloning.post_range[0]} - {config.cloning.post_range[1]}\n", style="green")
+    config_text.append("  Источники каналов: ", style="cyan")
+    config_text.append(f"{config.cloning.source_channels_file}\n", style="green")
+    config_text.append("  Целевые каналы: ", style="cyan")
+    config_text.append(f"{config.cloning.target_channels_file}\n\n", style="green")
+
+    # Настройки уникализации текста
+    config_text.append("Уникализация текста:\n", style="bold cyan")
+    config_text.append("  Использовать рерайт: ", style="cyan")
+    config_text.append(f"{'Да' if config.uniqueness.text.rewrite else 'Нет'}\n", style="green")
+    config_text.append("  Маскировка символов: ", style="cyan")
+    config_text.append(f"{'Да' if config.uniqueness.text.symbol_masking else 'Нет'}\n", style="green")
+    config_text.append("  Файл замен: ", style="cyan")
+    config_text.append(f"{config.uniqueness.text.replacements_file}\n\n", style="green")
+
+    # Настройки уникализации изображений
+    config_text.append("Уникализация изображений:\n", style="bold cyan")
+    config_text.append("  Кадрирование: ", style="cyan")
+    config_text.append(f"{config.uniqueness.image.crop[0]} - {config.uniqueness.image.crop[1]} пикселей\n", style="green")
+    config_text.append("  Яркость: ", style="cyan")
+    config_text.append(f"{config.uniqueness.image.brightness[0]} - {config.uniqueness.image.brightness[1]}%\n", style="green")
+    config_text.append("  Контраст: ", style="cyan")
+    config_text.append(f"{config.uniqueness.image.contrast[0]} - {config.uniqueness.image.contrast[1]}%\n", style="green")
+    config_text.append("  Изменение метаданных: ", style="cyan")
+    config_text.append(f"{config.uniqueness.image.metadata}\n", style="green")
+
+    # Логирование
+    config_text.append("\nНастройки логирования:\n", style="bold cyan")
+    config_text.append("  Основной лог-файл: ", style="cyan")
+    config_text.append(f"{config.logging.log_file}\n", style="green")
+    config_text.append("  Файл ошибок: ", style="cyan")
+    config_text.append(f"{config.logging.error_log_file}\n", style="green")
+
+    # Вывод панели с конфигом
     console.print(Panel(config_text, title="[bold magenta]Конфигурация[/]", border_style="cyan"))
+
