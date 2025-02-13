@@ -96,14 +96,12 @@ class ConfigManager:
 def print_config(config: Config) -> None:
     config_text = Text()
 
-    # API настройки
     config_text.append("API Настройки:\n", style="bold cyan")
     config_text.append("  OpenAI API Key: ", style="cyan")
     config_text.append(f"{config.api.openai_api_key}\n", style="green")
     config_text.append("  ChatGPT Model: ", style="cyan")
     config_text.append(f"{config.api.chat_gpt_model}\n\n", style="green")
 
-    # Telegram настройки
     config_text.append("Telegram Настройки:\n", style="bold cyan")
     config_text.append("  Папка с сессиями: ", style="cyan")
     config_text.append(f"{config.telegram.session_directory}\n", style="green")
@@ -112,7 +110,6 @@ def print_config(config: Config) -> None:
     config_text.append("  Файл с прокси: ", style="cyan")
     config_text.append(f"{config.telegram.proxy.list}\n\n", style="green")
 
-    # Настройки клонирования
     config_text.append("Настройки клонирования:\n", style="bold cyan")
     config_text.append("  Режим работы: ", style="cyan")
     config_text.append(f"{config.cloning.mode}\n", style="green")
@@ -123,7 +120,6 @@ def print_config(config: Config) -> None:
     config_text.append("  Целевые каналы: ", style="cyan")
     config_text.append(f"{config.cloning.target_channels_file}\n\n", style="green")
 
-    # Настройки уникализации текста
     config_text.append("Уникализация текста:\n", style="bold cyan")
     config_text.append("  Использовать рерайт: ", style="cyan")
     config_text.append(f"{'Да' if config.uniqueness.text.rewrite else 'Нет'}\n", style="green")
@@ -132,7 +128,6 @@ def print_config(config: Config) -> None:
     config_text.append("  Файл замен: ", style="cyan")
     config_text.append(f"{config.uniqueness.text.replacements_file}\n\n", style="green")
 
-    # Настройки уникализации изображений
     config_text.append("Уникализация изображений:\n", style="bold cyan")
     config_text.append("  Кадрирование: ", style="cyan")
     config_text.append(f"{config.uniqueness.image.crop[0]} - {config.uniqueness.image.crop[1]} пикселей\n", style="green")
@@ -143,12 +138,10 @@ def print_config(config: Config) -> None:
     config_text.append("  Изменение метаданных: ", style="cyan")
     config_text.append(f"{config.uniqueness.image.metadata}\n", style="green")
 
-    # Логирование
     config_text.append("\nНастройки логирования:\n", style="bold cyan")
     config_text.append("  Основной лог-файл: ", style="cyan")
     config_text.append(f"{config.logging.log_file}\n", style="green")
     config_text.append("  Файл ошибок: ", style="cyan")
     config_text.append(f"{config.logging.error_log_file}\n", style="green")
 
-    # Вывод панели с конфигом
     console.print(Panel(config_text, title="[bold magenta]Конфигурация[/]", border_style="cyan"))

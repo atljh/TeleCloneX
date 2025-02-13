@@ -59,7 +59,6 @@ class LoggerManager:
         logger = logging.getLogger(self.name)
         logger.setLevel(min(self.file_level, self.error_level, self.console_level))
 
-        # General log file handler
         file_handler = RotatingFileHandler(
             self.log_file,
             maxBytes=self.max_bytes,
