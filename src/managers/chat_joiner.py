@@ -279,7 +279,7 @@ class ChatJoiner:
         chat: str,
     ) -> bool | JoinStatus:
         """
-        Checks if group or chat is private
+        Checks if group or channel is private
 
         Args:
             client: TelegramClient.

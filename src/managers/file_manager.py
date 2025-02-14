@@ -4,7 +4,7 @@ from src.logger import console
 
 
 class FileManager:
-    """Manages file operations for groups, prompts, keywords, and blacklists."""
+    """Manages file operations for chats, prompts, keywords, and blacklists."""
 
     @staticmethod
     def _read_file(file: str, min_length: int = 0) -> List[str]:
@@ -32,21 +32,21 @@ class FileManager:
             raise
 
     @staticmethod
-    def read_groups(file: str = 'groups.txt') -> List[str]:
+    def read_chats(file: str = 'channels.txt') -> List[str]:
         """
-        Reads groups from a file.
+        Reads chats from a file.
 
         Returns:
-            List of groups.
+            List of chats.
         """
         try:
-            groups = [
+            chats = [
                 line.replace(" ", "").replace("https://", "")
                 for line in FileManager._read_file(file, min_length=5)
             ]
-            if not groups:
+            if not chats:
                 console.log("Нет групп для обработки", style="red")
-            return groups
+            return chats
         except Exception:
             console.log("Ошибка при чтении групп", style="bold red")
             return []
@@ -97,7 +97,7 @@ class FileManager:
         Reads the blacklist from a file.
 
         Returns:
-            Dictionary of account phones and their blacklisted groups.
+            Dictionary of account phones and their blacklisted chats.
         """
         blacklist = {}
         if not os.path.exists(file):
@@ -135,4 +135,3 @@ class FileManager:
         except IOError as e:
             console.log(f"Ошибка при добавлении в черный список: {e}", style="red")
             return False
-

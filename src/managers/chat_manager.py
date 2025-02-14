@@ -42,7 +42,7 @@ class ChatManager:
         """
 
         self.config = config
-        self.reaction_mode = config.reaction_mode
+        self.reaction_mode = config.cloning.mode
         self.keywords_file = config.keywords_file
         self.reaction_interval = config.reaction_interval
         self._messages_count = 0
