@@ -47,8 +47,8 @@ class ChatJoiner:
     Class to handle joining Telegram channels and groups.
     """
     def __init__(
-            self,
-            config: Config
+        self,
+        config: Config
     ):
         """
         Initializes the ChannelJoiner.
@@ -322,7 +322,7 @@ class ChatJoiner:
         """
         Sleeps for a random duration between min_delay and max_delay.
         """
-        min_delay, max_delay = self.config.join_delay
+        min_delay, max_delay = self.config.timeouts.join_delay
         delay = random.randint(min_delay, max_delay)
         await asyncio.sleep(delay)
 

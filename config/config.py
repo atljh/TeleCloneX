@@ -58,6 +58,7 @@ class UniquenessSettings(BaseModel):
 
 
 class TimeoutSettings(BaseModel):
+    join_delay: Tuple[int, int] = Field(default=(5, 15), description="Задержка перед подпиской на канал")
     post_delay: Tuple[int, int] = Field(default=(5, 15), description="Задержка перед отправкой в сек")
     flood_wait_limit: int = Field(default=300, description="Максимальное время ожидания при флуд-ограничении")
 
