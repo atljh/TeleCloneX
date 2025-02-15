@@ -89,8 +89,10 @@ class ChatJoiner:
 
         if chat_type == ChatType.CHANNEL:
             return await self._join_channel(client, account_phone, chat)
-        elif chat_type == ChatType.GROUP:
-            return await self._join_group(client, account_phone, chat)
+        # elif chat_type == ChatType.GROUP:
+        #     return await self._join_group(client, account_phone, chat)
+        else:
+            return JoinStatus.OK
 
     async def _join_channel(
         self,
