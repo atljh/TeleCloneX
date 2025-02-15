@@ -140,6 +140,12 @@ class Cloner(BaseThon):
                     f"Произошла ошибка при вступлении в чат {chat}, {account_phone}",
                     style="red"
                 )
+            case JoinStatus.OPEN_CHANNEL:
+                self.channels.append(chat)
+                console.log(
+                    f"Канал {chat} открытый",
+                    style="green"
+                )
             case _:
                 logger.error(f"Unknown JoinStatus: {status}")
                 console.log(f"Неизвестный статус: {status}")

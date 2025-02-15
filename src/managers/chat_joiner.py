@@ -39,6 +39,7 @@ class JoinStatus(Enum):
     ALREADY_JOINED = "ALREADY_JOINED"
     REQUEST_SEND = "REQUEST_SEND"
     ERROR = "ERROR"
+    OPEN_CHANNEL = "OPEN_CHANNEL"
 
 
 class ChatJoiner:
@@ -122,7 +123,7 @@ class ChatJoiner:
         # return await self._join_public_channel(
         #     client, account_phone, channel
         # )
-        return JoinStatus.SKIP
+        return JoinStatus.OPEN_CHANNEL
 
     async def _join_private_channel(
         self,
