@@ -7,7 +7,7 @@ from src.managers import (
     ChatJoiner, FileManager,
     JoinStatus, BlackList
 )
-from src.managers.chat_manager import ChatManager
+# from src.managers.chat_manager import ChatManager
 from src.logger import logger, console
 
 
@@ -50,7 +50,7 @@ class Cloner(BaseThon):
         self.blacklist = BlackList()
         self.file_manager = FileManager()
         self.chat_joiner = ChatJoiner(config)
-        self.chat_manager = ChatManager(config)
+        # self.chat_manager = ChatManager(config)
         self.account_phone = os.path.basename(self.item).split('.')[0]
         self.source_channels = config.cloning.source_channels_file
         self.target_channels = config.cloning.target_channels_file
@@ -69,12 +69,12 @@ class Cloner(BaseThon):
         await self._join_channels()
         handler_status = await self._start_chat_handler()
         return handler_status
-                                    
+
     async def _join_channels(self) -> None:
         """
         Joins the chats listed in the chats file, skipping blacklisted chats.
         """
-        for chat in self.file_manager.read_chats():
+        for chat in self.file_manager.read_chats(file='Источники.txt'):
             if self.blacklist.is_chat_blacklisted(
                 self.account_phone, chat
             ):
@@ -107,7 +107,7 @@ class Cloner(BaseThon):
                     f"Аккаунт {account_phone} успешно вступил в {chat}",
                     style="green"
                 )
-                self.chats.append(chat)
+                self.channels.append(chat)
             case JoinStatus.SKIP:
                 console.log(
                     f"Ссылка на чат {chat} не рабочая или такого чата не существует",
@@ -129,7 +129,7 @@ class Cloner(BaseThon):
                     f"Аккаунт {account_phone} уже состоит в чате {chat}",
                     style="green"
                 )
-                self.chats.append(chat)
+                self.channels.append(chat)
             case JoinStatus.REQUEST_SEND:
                 console.log(
                     f"Заявка на подписку в чат {chat} уже отправлена",
@@ -154,21 +154,21 @@ class Cloner(BaseThon):
         Returns:
             bool: True if monitoring started successfully, False otherwise.
         """
-        if not len(self.chats):
+        if not len(self.channels):
             console.log("Нет каналов для обработки", style="red")
             return False
         console.log(
             f"Мониторинг каналов начат для аккаунта {self.account_phone}",
             style="green"
         )
-        try:
-            status = await self.chat_manager.monitor_chats(
-                self.client, self.account_phone, self.chats
-            )
-            return status
-        except Exception as e:
-            logger.error(f"Error on monitor chats: {e}")
-            console.log('Ошибка при обработке каналов', style='yellow')
+        # try:
+        #     status = await self.chat_manager.monitor_chats(
+        #         self.client, self.account_phone, self.chats
+        #     )
+        #     return status
+        # except Exception as e:
+        #     logger.error(f"Error on monitor chats: {e}")
+        #     console.log('Ошибка при обработке каналов', style='yellow')
 
     async def _main(self) -> str:
         """
