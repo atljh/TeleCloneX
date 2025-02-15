@@ -69,7 +69,7 @@ class Cloner(BaseThon):
         await self._join_channels()
         handler_status = await self._start_chat_handler()
         return handler_status
-
+                                    
     async def _join_channels(self) -> None:
         """
         Joins the chats listed in the chats file, skipping blacklisted chats.
