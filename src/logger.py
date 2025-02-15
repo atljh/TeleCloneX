@@ -97,6 +97,3 @@ class LoggerManager:
 logger_manager = LoggerManager(name="bot_logger")
 logger = logger_manager.get_logger()
 console = logger_manager.get_console()
-
-logger.info("This is an info message.")
-logger.error("This is an error message.")
