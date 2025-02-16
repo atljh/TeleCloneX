@@ -43,7 +43,10 @@ class Cloner(BaseThon):
             json_data (dict): The data loaded from the JSON file.
             config (Config): Configuration settings for the application.
         """
-        super().__init__(item=item, json_data=json_data)
+        super().__init__(
+            item=item,
+            json_data=json_data
+        )
         self.item = item
         self.config = config
         self.json_file = json_file
