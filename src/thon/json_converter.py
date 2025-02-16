@@ -8,18 +8,17 @@ from telethon.sessions import StringSession
 
 from jsoner import json_write_sync
 from tooler import ProxyParser
-
 from src.logger import console
+from config import ConfigManager
 from src.thon.base_session import BaseSession
-from scripts.ask_from_history import ask_from_history
 
 
 class JsonConverter(BaseSession):
     def __init__(self):
         super().__init__()
         self.__api_id, self.__api_hash = 2040, "b18441a1ff607e10a989891a5462e627"
-        prompt = "Введите прокси (формат socks5:ipaddr:port:user:pswd)"
-        proxy = ask_from_history(prompt, console, Path("history_proxies.json"))
+        config = ConfigManager.load_config()
+        proxy = config.telegram.proxy.enabled
         if proxy == 'Без прокси':
             self.__proxy = None
             return

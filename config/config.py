@@ -14,7 +14,7 @@ class APISettings(BaseModel):
 
 class ProxySettings(BaseModel):
     enabled: bool = Field(default=False, description="Использовать прокси")
-    list: str = Field(default="proxies.txt", description="Файл с прокси")
+    file: str = Field(default="proxies.txt", description="Файл с прокси")
 
 
 class TelegramSettings(BaseModel):
@@ -97,19 +97,13 @@ class ConfigManager:
 def print_config(config: Config) -> None:
     config_text = Text()
 
-    config_text.append("API Настройки:\n", style="bold cyan")
-    config_text.append("  OpenAI API Key: ", style="cyan")
-    config_text.append(f"{config.api.openai_api_key}\n", style="green")
-    config_text.append("  ChatGPT Model: ", style="cyan")
-    config_text.append(f"{config.api.chat_gpt_model}\n\n", style="green")
-
     config_text.append("Telegram Настройки:\n", style="bold cyan")
     config_text.append("  Папка с сессиями: ", style="cyan")
     config_text.append(f"{config.telegram.session_directory}\n", style="green")
     config_text.append("  Использовать прокси: ", style="cyan")
     config_text.append(f"{'Да' if config.telegram.proxy.enabled else 'Нет'}\n", style="green")
     config_text.append("  Файл с прокси: ", style="cyan")
-    config_text.append(f"{config.telegram.proxy.list}\n\n", style="green")
+    config_text.append(f"{config.telegram.proxy.file}\n\n", style="green")
 
     config_text.append("Настройки клонирования:\n", style="bold cyan")
     config_text.append("  Режим работы: ", style="cyan")

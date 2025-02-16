@@ -1,11 +1,11 @@
 import asyncio
 import random
-from typing import Dict, Optional
+from typing import Dict
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
 from telethon.errors import FloodWaitError
 from src.logger import console, logger
-from src.managers import ProxyManager, UniqueContentManager
+# from src.managers import ProxyManager, UniqueContentManager
 
 
 class ContentCloner:
@@ -20,9 +20,7 @@ class ContentCloner:
 
     def __init__(
         self,
-        config,
-        source_channel: str,
-        target_channel: str,
+        config
     ):
         """
         Initializes the ContentCloner.
@@ -34,13 +32,13 @@ class ContentCloner:
             mode (CloneMode): The cloning mode (HISTORY or REALTIME).
             history_range (Optional[tuple[int, int]]): The range of posts to clone (only for HISTORY mode).
         """
-        self.source_channel = source_channel
-        self.target_channel = target_channel
+        self.source_channel = 'source_channel'
+        self.target_channel = 'target_channel'
         self.mode = config.cloning.mode
         self.post_delay = config.timeouts.post_delay
         self.history_range = config.cloning.post_range
-        self.proxy_manager = ProxyManager()
-        self.unique_content_manager = UniqueContentManager()
+        # self.proxy_manager = ProxyManager()
+        # self.unique_content_manager = UniqueContentManager()
         self._running = False
 
     async def start(self) -> None:
@@ -60,7 +58,7 @@ class ContentCloner:
         Stops the cloning process.
         """
         self._running = False
-        console.log("Cloning stopped.", style="yellow")
+        console.log("Клонирование остановлено", style="yellow")
 
     async def _clone_history(self, client: TelegramClient) -> None:
         """
@@ -70,7 +68,7 @@ class ContentCloner:
             raise ValueError("For HISTORY mode, a post range must be specified.")
 
         start, end = self.history_range
-        console.log(f"Cloning posts from {start} to {end}...", style="blue")
+        console.log(f"Клонирование постов от {start} до {end}...", style="blue")
 
         try:
             async for message in client.iter_messages(self.source_channel, min_id=start, max_id=end):
@@ -110,8 +108,9 @@ class ContentCloner:
         """
         try:
             content = await self._extract_content(message)
-            unique_content = self.unique_content_manager.make_unique(content)
-            await self._publish_content(client, unique_content)
+            console.log(content)
+            # unique_content = self.unique_content_manager.make_unique(content)
+            # await self._publish_content(client, unique_content)
             console.log(f"Message published successfully: {message.id}", style="green")
         except Exception as e:
             logger.error(f"Error processing message {message.id}: {e}")
