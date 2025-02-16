@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from asyncio import Semaphore
 from typing import Generator
@@ -59,5 +60,10 @@ class Starter(BaseSession):
         if not sessions:
             console.log("Нет активных сессий. Прекращение работы.", style="yellow")
             return False
-        for item, json_file, json_data in sessions:
-            await self._main(item, json_file, json_data, self.config)
+        tasks = set()
+        for item, json_file, json_data in self.__get_sessions_and_users():
+            tasks.add(self._main(item, json_file, json_data, self.config))
+        if not tasks:
+            return False
+        await asyncio.gather(*tasks, return_exceptions=True)
+        return True

@@ -23,7 +23,6 @@ class ContentCloner:
         config,
         source_channel: str,
         target_channel: str,
-        history_range: Optional[tuple[int, int]] = None,
     ):
         """
         Initializes the ContentCloner.
@@ -38,7 +37,8 @@ class ContentCloner:
         self.source_channel = source_channel
         self.target_channel = target_channel
         self.mode = config.cloning.mode
-        self.history_range = history_range
+        self.post_delay = config.timeouts.post_delay
+        self.history_range = config.cloning.post_range
         self.proxy_manager = ProxyManager()
         self.unique_content_manager = UniqueContentManager()
         self._running = False
@@ -62,7 +62,7 @@ class ContentCloner:
         self._running = False
         console.log("Cloning stopped.", style="yellow")
 
-    async def _clone_history(self) -> None:
+    async def _clone_history(self, client: TelegramClient) -> None:
         """
         Clones content from the channel's history within the specified range.
         """
@@ -72,50 +72,30 @@ class ContentCloner:
         start, end = self.history_range
         console.log(f"Cloning posts from {start} to {end}...", style="blue")
 
-        for account in self.accounts:
-            client = TelegramClient(
-                f"sessions/{account.phone}",
-                account.api_id,
-                account.api_hash,
-                proxy=account.proxy,
-            )
-            await client.start(account.phone)
+        try:
+            async for message in client.iter_messages(self.source_channel, min_id=start, max_id=end):
+                if not self._running:
+                    break
+                await self._process_message(client, message)
+                await self._random_delay(self.post_delay)
+        except FloodWaitError as e:
+            console.log(f"Waiting {e.seconds} seconds due to Telegram limits...", style="yellow")
+            await asyncio.sleep(e.seconds)
+        finally:
+            await client.disconnect()
 
-            try:
-                async for message in client.iter_messages(self.source_channel, min_id=start, max_id=end):
-                    if not self._running:
-                        break
-                    await self._process_message(client, message)
-                    await self._random_delay(account.delay_range)
-            except FloodWaitError as e:
-                console.log(f"Waiting {e.seconds} seconds due to Telegram limits...", style="yellow")
-                await asyncio.sleep(e.seconds)
-            finally:
-                await client.disconnect()
-
-    async def _monitor_realtime(self) -> None:
+    async def _monitor_realtime(self, client: TelegramClient) -> None:
         """
         Monitors the source channel for new posts and clones them in real-time.
         """
         console.log("Starting real-time monitoring...", style="blue")
 
-        for account in self.accounts:
-            client = TelegramClient(
-                f"sessions/{account.phone}",
-                account.api_id,
-                account.api_hash,
-                proxy=account.proxy,
-            )
-            await client.start(account.phone)
-
-            @client.on(events.NewMessage(chats=self.source_channel))
-            async def handler(event):
-                if not self._running:
-                    return
-                await self._process_message(client, event.message)
-                await self._random_delay(account.delay_range)
-
-            console.log(f"Account {account.phone} started monitoring.", style="green")
+        @client.on(events.NewMessage(chats=self.source_channel))
+        async def handler(event):
+            if not self._running:
+                return
+            await self._process_message(client, event.message)
+            await self._random_delay(self.post_delay)
 
         while self._running:
             await asyncio.sleep(1)
