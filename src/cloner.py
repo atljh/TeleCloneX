@@ -7,7 +7,7 @@ from src.managers import (
     ChatJoiner, FileManager,
     JoinStatus, BlackList
 )
-# from src.managers.chat_manager import ChatManager
+from src.managers import ContentCloner
 from src.logger import logger, console
 
 
@@ -53,7 +53,7 @@ class Cloner(BaseThon):
         self.blacklist = BlackList()
         self.file_manager = FileManager()
         self.chat_joiner = ChatJoiner(config)
-        # self.chat_manager = ChatManager(config)
+        self.content_cloner = ContentCloner(config)
         self.account_phone = os.path.basename(self.item).split('.')[0]
         self.source_channels = config.cloning.source_channels_file
         self.target_channels = config.cloning.target_channels_file
@@ -168,7 +168,6 @@ class Cloner(BaseThon):
             return False
         console.log(
             f"Мониторинг каналов начат для аккаунта {self.account_phone}",
-            style="green"
         )
         # try:
         #     status = await self.chat_manager.monitor_chats(

@@ -322,6 +322,7 @@ class ChatJoiner:
         """
         min_delay, max_delay = self.config.timeouts.join_delay
         delay = random.randint(min_delay, max_delay)
+        console.print(f"Задержка {delay} перед подпиской на канал")
         await asyncio.sleep(delay)
 
     async def detect_chat(
