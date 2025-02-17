@@ -137,7 +137,8 @@ class ChatJoiner:
             await self._random_delay()
             await client(ImportChatInviteRequest(channel))
             return JoinStatus.OK
-        except FloodWaitError:
+        except FloodWaitError as e:
+            print(e.seconds)
             return JoinStatus.FLOOD
         except Exception as e:
             if "is not valid anymore" in str(e):
@@ -162,6 +163,7 @@ class ChatJoiner:
             return JoinStatus.OK
         except Exception as e:
             if "A wait of" in str(e):
+                print(e.seconds)
                 return JoinStatus.FLOOD
             elif "is not valid" in str(e):
                 return JoinStatus.SKIP
@@ -369,6 +371,7 @@ class ChatJoiner:
             if "you are not part of" in str(e):
                 return ChatType.GROUP
             elif "A wait of" in str(e):
+                print(e.seconds)
                 return JoinStatus.FLOOD
             logger.error(f"Error trying to determine chat type {chat_link}: {e}")
             console.log(f"Ошибка при определении типа чата {chat_link}", style="red")

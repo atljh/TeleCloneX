@@ -1,11 +1,11 @@
 import asyncio
 import random
-from typing import Dict
+from typing import Dict, List
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
 from telethon.errors import FloodWaitError
 from src.logger import console, logger
-# from src.managers import ProxyManager, UniqueContentManager
+from src.managers import FileManager
 
 
 class ContentCloner:
@@ -20,7 +20,9 @@ class ContentCloner:
 
     def __init__(
         self,
-        config
+        config,
+        client: TelegramClient,
+        account_phone: str,
     ):
         """
         Initializes the ContentCloner.
@@ -32,55 +34,62 @@ class ContentCloner:
             mode (CloneMode): The cloning mode (HISTORY or REALTIME).
             history_range (Optional[tuple[int, int]]): The range of posts to clone (only for HISTORY mode).
         """
-        self.source_channel = 'source_channel'
-        self.target_channel = 'target_channel'
+        self.config = config
+        self.client = client
+        self.account_phone = account_phone
+        self.source_channels = FileManager._read_file(
+            config.cloning.source_channels_file
+        )
+        self.target_channel = self.get_target_channels()
         self.mode = config.cloning.mode
         self.post_delay = config.timeouts.post_delay
         self.history_range = config.cloning.post_range
-        # self.proxy_manager = ProxyManager()
         # self.unique_content_manager = UniqueContentManager()
         self._running = False
 
+    def get_target_channels(self) -> List[str]:
+        target_channels = []
+        all_target_channels = FileManager._read_file(
+            self.config.cloning.target_channels_file
+        )
+        for channel in all_target_channels:
+            if channel.split(' ')[1] == self.account_phone:
+                target_channels.append(channel.split(' ')[0])
+        return target_channels
+
     async def start(self) -> None:
-        """
-        Starts the cloning process based on the selected mode.
-        - If mode is HISTORY, clones posts from the specified range.
-        - If mode is REALTIME, monitors the source channel for new posts.
-        """
+        if not self.target_channel or not self.source_channels:
+            console.print(
+                f"{self.account_phone} | Не найдены целевые каналы для аккаунта",
+                style="red"
+            )
+            return
         self._running = True
         if self.mode == 'history':
-            await self._clone_history()
+            await self._clone_history(self.client)
         elif self.mode == 'live':
-            await self._monitor_realtime()
+            await self._monitor_realtime(self.client)
 
     async def stop(self) -> None:
-        """
-        Stops the cloning process.
-        """
         self._running = False
         console.log("Клонирование остановлено", style="yellow")
 
     async def _clone_history(self, client: TelegramClient) -> None:
-        """
-        Clones content from the channel's history within the specified range.
-        """
         if not self.history_range:
             raise ValueError("For HISTORY mode, a post range must be specified.")
 
         start, end = self.history_range
         console.log(f"Клонирование постов от {start} до {end}...", style="blue")
-
-        try:
-            async for message in client.iter_messages(self.source_channel, min_id=start, max_id=end):
-                if not self._running:
-                    break
-                await self._process_message(client, message)
-                await self._random_delay(self.post_delay)
-        except FloodWaitError as e:
-            console.log(f"Waiting {e.seconds} seconds due to Telegram limits...", style="yellow")
-            await asyncio.sleep(e.seconds)
-        finally:
-            await client.disconnect()
+        for channel in self.source_channels:
+            try:
+                async for message in client.iter_messages(channel, min_id=start, max_id=end):
+                    if not self._running:
+                        break
+                    await self._process_message(client, message)
+                    await self._random_delay(self.post_delay)
+            except FloodWaitError as e:
+                console.log(f"Waiting {e.seconds} seconds due to Telegram limits...", style="yellow")
+                await asyncio.sleep(e.seconds)
 
     async def _monitor_realtime(self, client: TelegramClient) -> None:
         """
@@ -88,7 +97,7 @@ class ContentCloner:
         """
         console.log("Starting real-time monitoring...", style="blue")
 
-        @client.on(events.NewMessage(chats=self.source_channel))
+        @client.on(events.NewMessage(chats=self.source_channels))
         async def handler(event):
             if not self._running:
                 return
@@ -110,8 +119,8 @@ class ContentCloner:
             content = await self._extract_content(message)
             console.log(content)
             # unique_content = self.unique_content_manager.make_unique(content)
-            # await self._publish_content(client, unique_content)
-            console.log(f"Message published successfully: {message.id}", style="green")
+            await self._publish_content(client, content)
+            console.log(f"Сообщение опубликовано: {message.id}", style="green")
         except Exception as e:
             logger.error(f"Error processing message {message.id}: {e}")
             console.log(f"Error processing message {message.id}: {e}", style="red")

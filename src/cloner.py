@@ -53,8 +53,10 @@ class Cloner(BaseThon):
         self.blacklist = BlackList()
         self.file_manager = FileManager()
         self.chat_joiner = ChatJoiner(config)
-        self.content_cloner = ContentCloner(config)
         self.account_phone = os.path.basename(self.item).split('.')[0]
+        self.content_cloner = ContentCloner(
+            config, self.client, self.account_phone
+        )
         self.source_channels = config.cloning.source_channels_file
         self.target_channels = config.cloning.target_channels_file
         self.channels = []
@@ -83,16 +85,16 @@ class Cloner(BaseThon):
             ):
                 console.log(f"Чат {chat} в черном списке, пропускаем")
                 continue
-            status = await self.chat_joiner.join(
+            join_status = await self.chat_joiner.join(
                 self.client, self.account_phone, chat
             )
             await self._handle_join_status(
-                status, self.account_phone, chat
+                join_status, self.account_phone, chat
             )
 
     async def _handle_join_status(
         self,
-        status: JoinStatus,
+        join_status: JoinStatus,
         account_phone: str,
         chat: str
     ) -> None:
@@ -104,7 +106,7 @@ class Cloner(BaseThon):
             account_phone (str): The phone number of the account.
             chat (str): The name or identifier of the chat.
         """
-        match status:
+        match join_status:
             case JoinStatus.OK:
                 console.log(
                     f"Аккаунт {account_phone} успешно вступил в {chat}",
@@ -146,8 +148,8 @@ class Cloner(BaseThon):
             case JoinStatus.OPEN_CHANNEL:
                 self.channels.append(chat)
             case _:
-                logger.error(f"Unknown JoinStatus: {status}")
-                console.log(f"Неизвестный статус: {status}")
+                logger.error(f"Unknown JoinStatus: {join_status}")
+                console.log(f"Неизвестный статус: {join_status}")
 
     async def _clone_channels_posts(self) -> bool:
         ...
@@ -165,6 +167,7 @@ class Cloner(BaseThon):
         console.log(
             f"Мониторинг каналов начат для аккаунта {self.account_phone}",
         )
+        await self.content_cloner.start()
         # try:
         #     status = await self.chat_manager.monitor_chats(
         #         self.client, self.account_phone, self.chats
