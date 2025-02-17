@@ -40,7 +40,7 @@ class ContentCloner:
         self.source_channels = FileManager._read_file(
             config.cloning.source_channels_file
         )
-        self.target_channel = self.get_target_channels()
+        self.target_channels = self.get_target_channels()
         self.mode = config.cloning.mode
         self.post_delay = config.timeouts.post_delay
         self.history_range = config.cloning.post_range
@@ -58,7 +58,7 @@ class ContentCloner:
         return target_channels
 
     async def start(self) -> None:
-        if not self.target_channel or not self.source_channels:
+        if not self.target_channels or not self.source_channels:
             console.print(
                 f"{self.account_phone} | Не найдены целевые каналы для аккаунта",
                 style="red"
@@ -76,7 +76,7 @@ class ContentCloner:
 
     async def _clone_history(self, client: TelegramClient) -> None:
         if not self.history_range:
-            raise ValueError("For HISTORY mode, a post range must be specified.")
+            raise ValueError("Для режима работы по истории канала должнен быть указан диапазон постов")
 
         start, end = self.history_range
         console.log(f"Клонирование постов от {start} до {end}...", style="blue")
@@ -119,11 +119,11 @@ class ContentCloner:
             content = await self._extract_content(message)
             console.log(content)
             # unique_content = self.unique_content_manager.make_unique(content)
-            await self._publish_content(client, content)
+            for channel in self.target_channels:
+                await self._publish_content(client, content, channel)
             console.log(f"Сообщение опубликовано: {message.id}", style="green")
         except Exception as e:
             logger.error(f"Error processing message {message.id}: {e}")
-            console.log(f"Error processing message {message.id}: {e}", style="red")
 
     async def _extract_content(self, message) -> Dict:
         """
@@ -148,7 +148,12 @@ class ContentCloner:
 
         return content
 
-    async def _publish_content(self, client: TelegramClient, content: Dict) -> None:
+    async def _publish_content(
+        self,
+        client: TelegramClient,
+        content: Dict,
+        target_channel: str
+    ) -> None:
         """
         Publishes unique content to the target channel.
 
@@ -157,13 +162,13 @@ class ContentCloner:
             content (Dict): The unique content to publish.
         """
         if content.get("photo"):
-            await client.send_file(self.target_channel, content["photo"], caption=content["text"])
+            await client.send_file(target_channel, content["photo"], caption=content["text"])
         elif content.get("video"):
-            await client.send_file(self.target_channel, content["video"], caption=content["text"])
+            await client.send_file(target_channel, content["video"], caption=content["text"])
         elif content.get("audio"):
-            await client.send_file(self.target_channel, content["audio"], caption=content["text"])
+            await client.send_file(target_channel, content["audio"], caption=content["text"])
         else:
-            await client.send_message(self.target_channel, content["text"])
+            await client.send_message(target_channel, content["text"])
 
     async def _random_delay(self, delay_range: tuple[int, int]) -> None:
         """

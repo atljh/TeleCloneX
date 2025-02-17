@@ -7,15 +7,15 @@ api:
 telegram:
   session_directory: "accounts/"  # Папка с session-файлами аккаунтов
   proxy:
-    enabled: true  # Использовать прокси (true/false)
-    list: "proxies.txt"  # Файл с прокси в формате IP:Port:Username:Password
+    enabled: false  # Использовать прокси (true/false)
+    file: "proxy.txt"  # Файл с прокси в формате IP:Port:Username:Password
 
 # Настройки клонирования
 cloning:
   mode: "history"  # Режим работы: history (по истории) или live (в реальном времени)
-  post_range: [20, 300]  # Диапазон постов для клонирования (только для history)
+  posts_to_clone: 5  # Последних постов для клонирования (только для history)
   source_channels_file: "Источники.txt"  # Файл с каналами-донорами
-  target_channels_file: "Цели.txt"  # Файл с целевыми каналами и аккаунтами
+  target_channels_file: "Цель.txt"  # Файл с целевыми каналами и аккаунтами
 
 # Настройки уникализации
 uniqueness:
@@ -38,6 +38,7 @@ uniqueness:
 
 # Настройки задержек
 timeouts:
+  join_delay: [5, 15]  # Задержка перед подпиской на канал
   post_delay: [5, 15]  # Задержка перед отправкой сообщений (в секундах)
   flood_wait_limit: 300  # Максимальное время ожидания при флуд-ограничении (в секундах)
 

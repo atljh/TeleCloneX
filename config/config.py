@@ -24,7 +24,7 @@ class TelegramSettings(BaseModel):
 
 class CloningSettings(BaseModel):
     mode: str = Field(default="history", description="Режим работы: history или live")
-    post_range: Tuple[int, int] = Field(default=(20, 300), description="Диапазон постов для клонирования")
+    posts_to_clone: int = Field(default=(20), description="Последних постов для клонирования")
     source_channels_file: str = Field(default="Источники.txt", description="Файл с каналами-донорами")
     target_channels_file: str = Field(default="Цели.txt", description="Файл с целевыми каналами")
 
@@ -109,7 +109,7 @@ def print_config(config: Config) -> None:
     config_text.append("  Режим работы: ", style="cyan")
     config_text.append(f"{config.cloning.mode}\n", style="green")
     config_text.append("  Диапазон постов: ", style="cyan")
-    config_text.append(f"{config.cloning.post_range[0]} - {config.cloning.post_range[1]}\n", style="green")
+    config_text.append(f"{config.cloning.posts_to_clone}\n", style="green")
     config_text.append("  Источники каналов: ", style="cyan")
     config_text.append(f"{config.cloning.source_channels_file}\n", style="green")
     config_text.append("  Целевые каналы: ", style="cyan")

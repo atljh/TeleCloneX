@@ -78,6 +78,7 @@ class ChatJoiner:
         """
         chat = self.clean_chat_link(chat_link)
         chat_type = await self.detect_chat(client, chat)
+        print(chat_type)
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
         elif isinstance(chat_type, JoinStatus):
@@ -372,7 +373,7 @@ class ChatJoiner:
                 return ChatType.GROUP
             elif "A wait of" in str(e):
                 print(e.seconds)
-                return JoinStatus.FLOOD
+                return JoinStatus.FLOOD, e.seconds
             logger.error(f"Error trying to determine chat type {chat_link}: {e}")
             console.log(f"Ошибка при определении типа чата {chat_link}", style="red")
             return ChatType.UNKNOWN
