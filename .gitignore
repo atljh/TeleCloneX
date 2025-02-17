@@ -11,3 +11,4 @@ dist
 *.json
 *.txt
 .pytest_cache
+downloads/
