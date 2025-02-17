@@ -28,11 +28,9 @@ class ContentCloner:
         Initializes the ContentCloner.
 
         Args:
-            source_channel (str): The source channel link (donor channel).
-            target_channel (str): The target channel link where content will be published.
-            accounts (List[AccountConfig]): List of accounts to use for cloning.
-            mode (CloneMode): The cloning mode (HISTORY or REALTIME).
-            posts_to_clone (Optional[tuple[int, int]]): Amount of posts to clone (only for HISTORY mode).
+            config: Configuration object.
+            client (TelegramClient): The Telegram client instance.
+            account_phone (str): The phone number of the account.
         """
         self.config = config
         self.client = client
@@ -44,7 +42,6 @@ class ContentCloner:
         self.mode = config.cloning.mode
         self.post_delay = config.timeouts.post_delay
         self.posts_to_clone = config.cloning.posts_to_clone
-        # self.unique_content_manager = UniqueContentManager()
         self._running = False
 
     def get_target_channels(self) -> List[str]:
@@ -55,6 +52,12 @@ class ContentCloner:
         for channel in all_target_channels:
             if channel.split(' ')[1] == self.account_phone:
                 target_channels.append(channel.split(' ')[0])
+
+        if not target_channels:
+            console.print(
+                f"{self.account_phone} | Не найдены целевые каналы для аккаунта",
+                style="red"
+            )
         return target_channels
 
     async def start(self) -> None:
@@ -72,29 +75,51 @@ class ContentCloner:
 
     async def stop(self) -> None:
         self._running = False
-        console.log("Клонирование остановлено", style="yellow")
+        console.print("Клонирование остановлено", style="yellow")
+
+    async def _check_channel_access(self, client: TelegramClient, channel: str) -> bool:
+        """
+        Checks if the channel is accessible.
+
+        Args:
+            client (TelegramClient): The Telegram client instance.
+            channel (str): The channel name or link.
+
+        Returns:
+            bool: True if the channel is accessible, otherwise False.
+        """
+        try:
+            await client.get_entity(channel)
+            return True
+        except Exception as e:
+            logger.error(f"Канал {channel} недоступен: {e}")
+            console.print(f"Канал {channel} недоступен: {e}", style="red")
+            return False
 
     async def _clone_history(self, client: TelegramClient) -> None:
         if not self.posts_to_clone:
             raise ValueError("Для режима работы по истории канала должно быть указано количество постов")
 
         for channel in self.source_channels:
-            console.log(f"Клонирование последних {self.posts_to_clone} постов в канале {channel}...", style="blue")
+            if not await self._check_channel_access(client, channel):
+                continue
+
+            console.print(f"Клонирование последних {self.posts_to_clone} постов в канале {channel}...", style="blue")
             try:
-                async for message in client.iter_messages(channel, limit=10):
+                async for message in client.iter_messages(channel, limit=self.posts_to_clone):
                     if not self._running:
                         break
                     await self._process_message(client, message)
                     await self._random_delay(self.post_delay)
             except FloodWaitError as e:
-                console.log(f"Waiting {e.seconds} seconds due to Telegram limits...", style="yellow")
+                console.print(f"Лимиты превышены. Ожидание {e.seconds} секунд...", style="yellow")
                 await asyncio.sleep(e.seconds)
 
     async def _monitor_realtime(self, client: TelegramClient) -> None:
         """
         Monitors the source channel for new posts and clones them in real-time.
         """
-        console.log("Starting real-time monitoring...", style="blue")
+        console.print("Starting real-time monitoring...", style="blue")
 
         @client.on(events.NewMessage(chats=self.source_channels))
         async def handler(event):
@@ -118,13 +143,14 @@ class ContentCloner:
             content = await self._extract_content(message)
             # unique_content = self.unique_content_manager.make_unique(content)
             for channel in self.target_channels:
+                if not await self._check_channel_access(client, channel):
+                    continue
+
                 await self._publish_content(client, content, channel)
-            console.log(f"Сообщение опубликовано: {message.id}", style="green")
+                console.print(f"Сообщение {message.id} опубликовано в канал {channel}", style="green")
         except Exception as e:
-            if "no user has" in str(e):
-                logger.error(f"Канал {channel} не найден")
-            else:
-                logger.error(f"Error processing message {message.id}: {e}")
+            logger.error(f"Ошибка при обработке сообщения {message.id}: {e}")
+            console.print(f"Ошибка при обработке сообщения {message.id}: {e}", style="red")
 
     async def _extract_content(self, message) -> Dict:
         """
@@ -146,7 +172,6 @@ class ContentCloner:
                     content["video"] = await message.download_media(file="downloads/")
                 elif message.document.mime_type.startswith("audio"):
                     content["audio"] = await message.download_media(file="downloads/")
-
         return content
 
     async def _publish_content(
@@ -162,14 +187,22 @@ class ContentCloner:
             client (TelegramClient): The Telegram client instance.
             content (Dict): The unique content to publish.
         """
-        if content.get("photo"):
-            await client.send_file(target_channel, content["photo"], caption=content["text"])
-        elif content.get("video"):
-            await client.send_file(target_channel, content["video"], caption=content["text"])
-        elif content.get("audio"):
-            await client.send_file(target_channel, content["audio"], caption=content["text"])
-        else:
-            await client.send_message(target_channel, content["text"])
+        try:
+            caption = content.get("text", "")
+            if len(caption) > 1024:
+                caption = caption[:1021] + "..."
+
+            if content.get("photo"):
+                await client.send_file(target_channel, content["photo"], caption=caption)
+            elif content.get("video"):
+                await client.send_file(target_channel, content["video"], caption=caption)
+            elif content.get("audio"):
+                await client.send_file(target_channel, content["audio"], caption=caption)
+            else:
+                await client.send_message(target_channel, caption)
+        except Exception as e:
+            logger.error(f"Ошибка при публикации контента в канал {target_channel}: {e}")
+            console.print(f"Ошибка при публикации контента в канал {target_channel}: {e}", style="red")
 
     async def _random_delay(self, delay_range: tuple[int, int]) -> None:
         """
@@ -179,4 +212,5 @@ class ContentCloner:
             delay_range (tuple[int, int]): The range of delays (in seconds).
         """
         delay = random.randint(*delay_range)
+        console.print(f"Задержка {delay} секунд")
         await asyncio.sleep(delay)
