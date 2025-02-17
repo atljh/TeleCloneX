@@ -1,6 +1,7 @@
 import sys
 import asyncio
 import requests
+from random import choice
 from pathlib import Path
 
 from telethon import TelegramClient
@@ -9,28 +10,27 @@ from telethon.sessions import StringSession
 from jsoner import json_write_sync
 from tooler import ProxyParser
 from src.logger import console
-from config import ConfigManager
 from src.thon.base_session import BaseSession
+from src.managers import FileManager
 
 
 class JsonConverter(BaseSession):
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         self.__api_id, self.__api_hash = 2040, "b18441a1ff607e10a989891a5462e627"
-        config = ConfigManager.load_config()
-        proxy = config.telegram.proxy.enabled
-        if proxy == 'Без прокси':
+        self.config = config
+        proxy_enabled = self.config.telegram.proxy.enabled
+        proxy_file = self.config.telegram.proxy.file
+        if proxy_enabled == 'Без прокси':
             self.__proxy = None
             return
         try:
-            proxy_parts = proxy.strip().split(':')[1:]
-            if len(proxy_parts) == 4:
-                ip, port, username, password = proxy_parts
-                self.__proxy = ProxyParser(proxy).asdict_thon
-                if not self.check_proxy(ip, port, username, password):
-                    console.log("Прокси не работает, продолжаем без прокси", style="red")
-                    self.__proxy = None
-                    return
+            proxy_list = FileManager._read_file(proxy_file)
+            random_proxy = "http:" + choice(proxy_list)
+            proxy_parts = random_proxy.strip().split(':')
+            self.__proxy = None
+            if len(proxy_parts) == 5:
+                self.__proxy = ProxyParser(random_proxy).asdict_thon
             else:
                 raise ValueError("Неправильный формат прокси, продолжаем без него")
         except Exception as e:
