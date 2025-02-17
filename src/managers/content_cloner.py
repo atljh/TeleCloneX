@@ -130,26 +130,6 @@ class ContentCloner:
         while self._running:
             await asyncio.sleep(1)
 
-    async def _process_message(self, client: TelegramClient, message) -> None:
-        """
-        Processes a message: extracts content, makes it unique, and publishes it to the target channel.
-
-        Args:
-            client (TelegramClient): The Telegram client instance.
-            message: The message to process.
-        """
-        try:
-            content = await self._extract_content(message)
-            # unique_content = self.unique_content_manager.make_unique(content)
-            for channel in self.target_channels:
-                if not await self._check_channel_access(client, channel):
-                    continue
-                await self._publish_content(client, content, channel)
-                console.print(f"Сообщение {message.id} опубликовано в канал {channel}", style="green")
-        except Exception as e:
-            logger.error(f"Ошибка при обработке сообщения {message.id}: {e}")
-            console.print(f"Ошибка при обработке сообщения {message.id}: {e}", style="red")
-
     async def _extract_content(self, message) -> Dict:
         """
         Extracts content (text, images, videos, audio) from a message.
@@ -170,7 +150,36 @@ class ContentCloner:
                     content["video"] = await message.download_media(file="downloads/")
                 elif message.document.mime_type.startswith("audio"):
                     content["audio"] = await message.download_media(file="downloads/")
+
+        if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
+            console.print(f"Сообщение {message.id} не содержит текста или медиафайлов", style="yellow")
+
         return content
+
+    async def _process_message(self, client: TelegramClient, message) -> None:
+        """
+        Processes a message: extracts content, makes it unique, and publishes it to the target channel.
+
+        Args:
+            client (TelegramClient): The Telegram client instance.
+            message: The message to process.
+        """
+        try:
+            content = await self._extract_content(message)
+
+            if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
+                console.print(f"Сообщение {message.id} пустое. Пропускаем.", style="yellow")
+                return
+
+            # unique_content = self.unique_content_manager.make_unique(content)
+            for channel in self.target_channels:
+                if not await self._check_channel_access(client, channel):
+                    continue
+                await self._publish_content(client, content, channel)
+                console.print(f"Сообщение {message.id} опубликовано в канал {channel}", style="green")
+        except Exception as e:
+            logger.error(f"Ошибка при обработке сообщения {message.id}: {e}")
+            console.print(f"Ошибка при обработке сообщения {message.id}: {e}", style="red")
 
     async def _publish_content(
         self,
@@ -186,9 +195,13 @@ class ContentCloner:
             content (Dict): The unique content to publish.
         """
         try:
+            if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
+                console.print(f"Пустой контент. Пропускаем публикацию в канал {target_channel}", style="yellow")
+                return
+
             caption = content.get("text", "")
             if len(caption) > 1024:
-                caption = caption[:1021] + "..."
+                caption = caption[:1021]
 
             if content.get("photo"):
                 await client.send_file(target_channel, content["photo"], caption=caption)
@@ -200,7 +213,6 @@ class ContentCloner:
                 await client.send_message(target_channel, caption)
         except Exception as e:
             logger.error(f"Ошибка при публикации контента в канал {target_channel}: {e}")
-            console.print(f"Ошибка при публикации контента в канал {target_channel}: {e}", style="red")
 
     async def _random_delay(self, delay_range: tuple[int, int]) -> None:
         """

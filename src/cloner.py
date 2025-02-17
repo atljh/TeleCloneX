@@ -98,8 +98,7 @@ class Cloner(BaseThon):
             result = await self._handle_join_status(
                 join_status, self.client, self.account_phone, chat
             )
-            if not result:
-                return
+            return result
 
     async def _handle_join_status(
         self,
@@ -136,19 +135,24 @@ class Cloner(BaseThon):
                 self.blacklist.add_to_blacklist(account_phone, chat)
             case JoinStatus.FLOOD:
                 mute_seconds = await self.check_flood_wait(client)
+                console.print(mute_seconds)
+
+                if not mute_seconds:
+                    return True
                 flood_limit = self.config.timeouts.flood_wait_limit
-                if mute_seconds and mute_seconds <= flood_limit:
-                    console.print(
-                        f"{account_phone} | Флуд {mute_seconds} секунд, делаем паузу...",
-                        style="yellow"
-                    )
-                    await asyncio.sleep(mute_seconds)
-                else:
-                    console.print(
-                        f"{account_phone} | Флуд {mute_seconds} секунд, приостанавливаем работу",
-                        style="yellow"
-                    )
-                    return False
+                if mute_seconds:
+                    if mute_seconds <= flood_limit:
+                        console.print(
+                            f"{account_phone} | Флуд {mute_seconds} секунд, делаем паузу...",
+                            style="yellow"
+                        )
+                        await asyncio.sleep(mute_seconds)
+                    else:
+                        console.print(
+                            f"{account_phone} | Флуд {mute_seconds} секунд, приостанавливаем работу",
+                            style="yellow"
+                        )
+                        return False
             case JoinStatus.ALREADY_JOINED:
                 console.log(
                     f"Аккаунт {account_phone} уже состоит в чате {chat}",
@@ -185,16 +189,16 @@ class Cloner(BaseThon):
         console.log(
             f"Мониторинг каналов начат для аккаунта {self.account_phone}",
         )
-        status = await self.content_cloner.start()
-        return status
+        await self.content_cloner.start()
 
     async def check_flood_wait(self, client: TelegramClient):
         try:
-            await client.get_me()
+            me = await client.get_me()
         except FloodWaitError as e:
             print(f"Flood wait detected: {e.seconds} seconds remaining")
             return e.seconds
-        except Exception:
+        except Exception as e:
+            print(e)
             return None
         return None
 
