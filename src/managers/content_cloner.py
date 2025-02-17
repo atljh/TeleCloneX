@@ -119,7 +119,7 @@ class ContentCloner:
         """
         Monitors the source channel for new posts and clones them in real-time.
         """
-        console.print("Starting real-time monitoring...", style="blue")
+        console.print("Запущено клонирование с каналов в реальном времени...", style="blue")
 
         @client.on(events.NewMessage(chats=self.source_channels))
         async def handler(event):
@@ -145,7 +145,6 @@ class ContentCloner:
             for channel in self.target_channels:
                 if not await self._check_channel_access(client, channel):
                     continue
-
                 await self._publish_content(client, content, channel)
                 console.print(f"Сообщение {message.id} опубликовано в канал {channel}", style="green")
         except Exception as e:
@@ -212,5 +211,4 @@ class ContentCloner:
             delay_range (tuple[int, int]): The range of delays (in seconds).
         """
         delay = random.randint(*delay_range)
-        console.print(f"Задержка {delay} секунд")
         await asyncio.sleep(delay)

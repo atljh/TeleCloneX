@@ -1,4 +1,5 @@
 import os
+import asyncio
 from pathlib import Path
 
 from config import Config
@@ -85,16 +86,18 @@ class Cloner(BaseThon):
             ):
                 console.log(f"Чат {chat} в черном списке, пропускаем")
                 continue
-            join_status = await self.chat_joiner.join(
+            join_status, mute_seconds = await self.chat_joiner.join(
                 self.client, self.account_phone, chat
             )
+            print(mute_seconds)
             await self._handle_join_status(
-                join_status, self.account_phone, chat
+                join_status, mute_seconds, self.account_phone, chat
             )
 
     async def _handle_join_status(
         self,
         join_status: JoinStatus,
+        mute_seconds: int,
         account_phone: str,
         chat: str
     ) -> None:
@@ -129,6 +132,10 @@ class Cloner(BaseThon):
                     f"Слишком много запросов от аккаунта {account_phone}",
                     style="yellow"
                 )
+                flood_limit = self.config.timeouts.flood_wait_limit
+                if mute_seconds:
+                    if mute_seconds > flood_limit:
+                        await asyncio.sleep(mute_seconds)
             case JoinStatus.ALREADY_JOINED:
                 console.log(
                     f"Аккаунт {account_phone} уже состоит в чате {chat}",

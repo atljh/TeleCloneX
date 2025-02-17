@@ -77,11 +77,11 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         chat = self.clean_chat_link(chat_link)
-        chat_type = await self.detect_chat(client, chat)
+        chat_type, _ = await self.detect_chat(client, chat)
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
         elif isinstance(chat_type, JoinStatus):
-            return chat_type
+            return chat_type, _
         user_in_chat = await self.is_member(client, chat)
         if isinstance(user_in_chat, JoinStatus):
             return user_in_chat
@@ -335,14 +335,15 @@ class ChatJoiner:
         """
         Detect chat type
         Args:
-            chat: chat link or username.
+            client: TelegramClient instance.
+            chat_link: Chat link or username.
 
         Returns:
-            ChatType: Chat type (CHANNEL, GROUP or UNKNOWN) or JoinStatus
+            ChatType: Chat type (CHANNEL, GROUP, UNKNOWN) or JoinStatus.
         """
         try:
-            if "joinchat" in chat_link:
-                hash = chat_link.split("/")[-1]
+            if "joinchat" in chat_link or "/+" in chat_link:
+                hash = chat_link.split("/")[-1].lstrip("+")
                 res = await client(CheckChatInviteRequest(hash=hash))
 
                 if isinstance(res, ChatInviteAlready):
@@ -358,23 +359,23 @@ class ChatJoiner:
                     return ChatType.CHANNEL
 
             entity = await client.get_entity(chat_link)
+            print(entity.title)
             if isinstance(entity, Channel):
-                if entity.megagroup:
-                    return ChatType.GROUP
-                else:
-                    return ChatType.CHANNEL
+                return ChatType.GROUP if entity.megagroup else ChatType.CHANNEL
             elif isinstance(entity, Chat):
                 return ChatType.GROUP
             else:
                 return ChatType.UNKNOWN
+
+        except FloodWaitError as e:
+            return JoinStatus.FLOOD, e.seconds
         except Exception as e:
-            if "you are not part of" in str(e):
+            if "you are not part of" in str(e).lower():
                 return ChatType.GROUP
             elif "A wait of" in str(e):
-                print(e.seconds)
-                return JoinStatus.FLOOD, e.seconds
-            logger.error(f"Error trying to determine chat type {chat_link}: {e}")
-            console.log(f"Ошибка при определении типа чата {chat_link}", style="red")
+                wait_time = int("".join(filter(str.isdigit, str(e))))
+                return JoinStatus.FLOOD, wait_time
+            logger.error(f"Ошибка при определении типа чата {chat_link}: {e}", exc_info=True)
             return ChatType.UNKNOWN
 
     def clean_chat_link(self, chat_link: str) -> str:
