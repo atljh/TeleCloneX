@@ -32,7 +32,7 @@ class ContentCloner:
             target_channel (str): The target channel link where content will be published.
             accounts (List[AccountConfig]): List of accounts to use for cloning.
             mode (CloneMode): The cloning mode (HISTORY or REALTIME).
-            history_range (Optional[tuple[int, int]]): The range of posts to clone (only for HISTORY mode).
+            posts_to_clone (Optional[tuple[int, int]]): Amount of posts to clone (only for HISTORY mode).
         """
         self.config = config
         self.client = client
@@ -43,7 +43,7 @@ class ContentCloner:
         self.target_channels = self.get_target_channels()
         self.mode = config.cloning.mode
         self.post_delay = config.timeouts.post_delay
-        self.history_range = config.cloning.post_range
+        self.posts_to_clone = config.cloning.posts_to_clone
         # self.unique_content_manager = UniqueContentManager()
         self._running = False
 
@@ -75,14 +75,13 @@ class ContentCloner:
         console.log("Клонирование остановлено", style="yellow")
 
     async def _clone_history(self, client: TelegramClient) -> None:
-        if not self.history_range:
-            raise ValueError("Для режима работы по истории канала должнен быть указан диапазон постов")
+        if not self.posts_to_clone:
+            raise ValueError("Для режима работы по истории канала должно быть указано количество постов")
 
-        start, end = self.history_range
-        console.log(f"Клонирование постов от {start} до {end}...", style="blue")
         for channel in self.source_channels:
+            console.log(f"Клонирование последних {self.posts_to_clone} постов в канале {channel}...", style="blue")
             try:
-                async for message in client.iter_messages(channel, min_id=start, max_id=end):
+                async for message in client.iter_messages(channel, limit=10):
                     if not self._running:
                         break
                     await self._process_message(client, message)
@@ -117,13 +116,15 @@ class ContentCloner:
         """
         try:
             content = await self._extract_content(message)
-            console.log(content)
             # unique_content = self.unique_content_manager.make_unique(content)
             for channel in self.target_channels:
                 await self._publish_content(client, content, channel)
             console.log(f"Сообщение опубликовано: {message.id}", style="green")
         except Exception as e:
-            logger.error(f"Error processing message {message.id}: {e}")
+            if "no user has" in str(e):
+                logger.error(f"Канал {channel} не найден")
+            else:
+                logger.error(f"Error processing message {message.id}: {e}")
 
     async def _extract_content(self, message) -> Dict:
         """

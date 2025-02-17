@@ -78,7 +78,6 @@ class ChatJoiner:
         """
         chat = self.clean_chat_link(chat_link)
         chat_type = await self.detect_chat(client, chat)
-        print(chat_type)
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
         elif isinstance(chat_type, JoinStatus):
