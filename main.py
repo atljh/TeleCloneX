@@ -14,7 +14,7 @@ def main():
     config = ConfigManager.load_config()
     print_config(config)
     sessions_count = JsonConverter(config).main()
-    # asyncio.run(run_starter(sessions_count, config))
+    asyncio.run(run_starter(sessions_count, config))
 
 
 if __name__ == "__main__":

@@ -21,18 +21,20 @@ class JsonConverter(BaseSession):
         self.config = config
         proxy_enabled = self.config.telegram.proxy.enabled
         proxy_file = self.config.telegram.proxy.file
-        if proxy_enabled == 'Без прокси':
+        if not proxy_enabled:
             self.__proxy = None
             return
         try:
             proxy_list = FileManager._read_file(proxy_file)
+            if not proxy_list:
+                console.log("Прокси не найдены")
+                sys.exit(1)
             random_proxy = "http:" + choice(proxy_list)
             proxy_parts = random_proxy.strip().split(':')
             self.__proxy = None
-            if len(proxy_parts) == 5:
-                self.__proxy = ProxyParser(random_proxy).asdict_thon
-            else:
+            if not len(proxy_parts) == 5:
                 raise ValueError("Неправильный формат прокси, продолжаем без него")
+            self.__proxy = ProxyParser(random_proxy).asdict_thon
         except Exception as e:
             console.log(e, style="red")
             self.__proxy = None
@@ -40,8 +42,8 @@ class JsonConverter(BaseSession):
 
     def check_proxy(self, ip, port, username, password):
         proxies = {
-            'http': f"socks5://{username}:{password}@{ip}:{port}",
-            'https': f"socks5://{username}:{password}@{ip}:{port}"
+            'http': f"http://{username}:{password}@{ip}:{port}",
+            'https': f"https://{username}:{password}@{ip}:{port}"
         }
         try:
             response = requests.get('https://httpbin.org/ip', proxies=proxies, timeout=10)
@@ -51,8 +53,7 @@ class JsonConverter(BaseSession):
             else:
                 print("Прокси не отвечает, код состояния:", response.status_code)
                 return False
-        except requests.exceptions.RequestException as e:
-            console.log(f"Ошибка при проверке прокси {e}")
+        except requests.exceptions.RequestException:
             return False
 
     def _main(self, item: Path, json_file: Path, json_data: dict):
