@@ -33,23 +33,22 @@ class Starter(BaseSession):
                 try:
                     r = await cloner.main()
                 except Exception as e:
-                    console.log(f"Ошибка при работе аккаунта {item}: {e}", style="red")
+                    logger.error(f"Ошибка при работе акканута {item}: {e}")
                     r = "ERROR_UNKNOWN"
             if "ERROR_AUTH" in r:
-                console.log(f"Аккаунт {item.name} разлогинен или забанен", style="red")
+                logger.error(f"Ошибка при работе акканута {item}")
                 move_item(item, self.banned_dir, True, True)
                 move_item(json_file, self.banned_dir, True, True)
                 return
             if "ERROR_STORY" in r:
-                console.log(f"Ошибка при работе аккаунта {item.name}", style="red")
+                logger.error(f"Ошибка при работе акканута {item}")
                 move_item(item, self.errors_dir, True, True)
                 move_item(json_file, self.errors_dir, True, True)
                 return
             if "OK" in r:
-                console.log(f"Аккаунт {item.name} закончил работу", style="green")
+                console.log(f"{item.name} | Аккаунт закончил работу", style="green")
         except Exception as e:
             logger.error(f"Ошибка при работе акканута {item}: {e}")
-            console.log(f"Ошибка при работе аккаунта {item}: {e}", style="red")
 
     def __get_sessions_and_users(self) -> Generator:
         for item, json_file, json_data in self.find_sessions():

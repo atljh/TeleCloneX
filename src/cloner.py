@@ -2,6 +2,9 @@ import os
 import asyncio
 from pathlib import Path
 
+from telethon import TelegramClient
+from telethon.errors import FloodWaitError
+
 from config import Config
 from src.thon import BaseThon
 from src.managers import (
@@ -72,7 +75,9 @@ class Cloner(BaseThon):
         console.log(
             f"Аккаунт {self.account_phone} начал работу",
         )
-        await self._join_channels()
+        result = await self._join_channels()
+        if not result:
+            return
         handler_status = await self._start_chat_handler()
         return handler_status
 
@@ -80,27 +85,29 @@ class Cloner(BaseThon):
         """
         Joins the chats listed in the chats file, skipping blacklisted chats.
         """
-        for chat in self.file_manager.read_chats(file='Источники.txt'):
+        channels = self.file_manager.read_chats(file='Источники.txt')
+        for chat in channels:
             if self.blacklist.is_chat_blacklisted(
                 self.account_phone, chat
             ):
                 console.log(f"Чат {chat} в черном списке, пропускаем")
                 continue
-            join_status, mute_seconds = await self.chat_joiner.join(
+            join_status = await self.chat_joiner.join(
                 self.client, self.account_phone, chat
             )
-            print(mute_seconds)
-            await self._handle_join_status(
-                join_status, mute_seconds, self.account_phone, chat
+            result = await self._handle_join_status(
+                join_status, self.client, self.account_phone, chat
             )
+            if not result:
+                return
 
     async def _handle_join_status(
         self,
         join_status: JoinStatus,
-        mute_seconds: int,
+        client: TelegramClient,
         account_phone: str,
         chat: str
-    ) -> None:
+    ) -> bool:
         """
         Handles the status after attempting to join a chat.
 
@@ -128,14 +135,20 @@ class Cloner(BaseThon):
                 )
                 self.blacklist.add_to_blacklist(account_phone, chat)
             case JoinStatus.FLOOD:
-                console.log(
-                    f"Слишком много запросов от аккаунта {account_phone}",
-                    style="yellow"
-                )
+                mute_seconds = await self.check_flood_wait(client)
                 flood_limit = self.config.timeouts.flood_wait_limit
-                if mute_seconds:
-                    if mute_seconds > flood_limit:
-                        await asyncio.sleep(mute_seconds)
+                if mute_seconds and mute_seconds <= flood_limit:
+                    console.print(
+                        f"{account_phone} | Флуд {mute_seconds} секунд, делаем паузу...",
+                        style="yellow"
+                    )
+                    await asyncio.sleep(mute_seconds)
+                else:
+                    console.print(
+                        f"{account_phone} | Флуд {mute_seconds} секунд, приостанавливаем работу",
+                        style="yellow"
+                    )
+                    return False
             case JoinStatus.ALREADY_JOINED:
                 console.log(
                     f"Аккаунт {account_phone} уже состоит в чате {chat}",
@@ -157,9 +170,7 @@ class Cloner(BaseThon):
             case _:
                 logger.error(f"Unknown JoinStatus: {join_status}")
                 console.log(f"Неизвестный статус: {join_status}")
-
-    async def _clone_channels_posts(self) -> bool:
-        ...
+        return True
 
     async def _start_chat_handler(self) -> bool:
         """
@@ -174,15 +185,18 @@ class Cloner(BaseThon):
         console.log(
             f"Мониторинг каналов начат для аккаунта {self.account_phone}",
         )
-        await self.content_cloner.start()
-        # try:
-        #     status = await self.chat_manager.monitor_chats(
-        #         self.client, self.account_phone, self.chats
-        #     )
-        #     return status
-        # except Exception as e:
-        #     logger.error(f"Error on monitor chats: {e}")
-        #     console.log('Ошибка при обработке каналов', style='yellow')
+        status = await self.content_cloner.start()
+        return status
+
+    async def check_flood_wait(self, client: TelegramClient):
+        try:
+            await client.get_me()
+        except FloodWaitError as e:
+            print(f"Flood wait detected: {e.seconds} seconds remaining")
+            return e.seconds
+        except Exception:
+            return None
+        return None
 
     async def _main(self) -> str:
         """

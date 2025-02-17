@@ -69,9 +69,9 @@ class ContentCloner:
             return
         self._running = True
         if self.mode == 'history':
-            await self._clone_history(self.client)
+            return await self._clone_history(self.client)
         elif self.mode == 'live':
-            await self._monitor_realtime(self.client)
+            return await self._monitor_realtime(self.client)
 
     async def stop(self) -> None:
         self._running = False
@@ -103,7 +103,6 @@ class ContentCloner:
         for channel in self.source_channels:
             if not await self._check_channel_access(client, channel):
                 continue
-
             console.print(f"Клонирование последних {self.posts_to_clone} постов в канале {channel}...", style="blue")
             try:
                 async for message in client.iter_messages(channel, limit=self.posts_to_clone):

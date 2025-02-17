@@ -77,11 +77,11 @@ class ChatJoiner:
             JoinStatus: The result of the operation.
         """
         chat = self.clean_chat_link(chat_link)
-        chat_type, _ = await self.detect_chat(client, chat)
+        chat_type = await self.detect_chat(client, chat)
         if chat_type == ChatType.UNKNOWN:
             return JoinStatus.ERROR
         elif isinstance(chat_type, JoinStatus):
-            return chat_type, _
+            return chat_type
         user_in_chat = await self.is_member(client, chat)
         if isinstance(user_in_chat, JoinStatus):
             return user_in_chat
@@ -138,8 +138,7 @@ class ChatJoiner:
             await client(ImportChatInviteRequest(channel))
             return JoinStatus.OK
         except FloodWaitError as e:
-            print(e.seconds)
-            return JoinStatus.FLOOD
+            return JoinStatus.FLOOD, e.seconds
         except Exception as e:
             if "is not valid anymore" in str(e):
                 return JoinStatus.BANNED
@@ -163,7 +162,7 @@ class ChatJoiner:
             return JoinStatus.OK
         except Exception as e:
             if "A wait of" in str(e):
-                print(e.seconds)
+                
                 return JoinStatus.FLOOD
             elif "is not valid" in str(e):
                 return JoinStatus.SKIP
@@ -219,6 +218,7 @@ class ChatJoiner:
             elif "successfully requested to join" in str(e):
                 return JoinStatus.REQUEST_SEND
             elif "A wait of" in str(e):
+                
                 return JoinStatus.FLOOD
             else:
                 logger.error(f"Error trying to join group {account_phone}, {group}: {e}")
@@ -234,8 +234,8 @@ class ChatJoiner:
             await self._random_delay()
             await client(JoinChannelRequest(group))
             return JoinStatus.OK
-        except FloodWaitError:
-            return JoinStatus.FLOOD
+        except FloodWaitError as e:
+            return JoinStatus.FLOOD, e.seconds
         except Exception as e:
             if "successfully requested to join" in str(e):
                 return JoinStatus.REQUEST_SEND
@@ -273,6 +273,7 @@ class ChatJoiner:
             elif "that you are not" in str(e):
                 return False
             elif "A wait of" in str(e):
+                
                 return JoinStatus.FLOOD
             logger.error(f"Error processing chat {chat}: {e}")
             console.log(f"Ошибка при обработке чата {chat}: {e}", style="red")
@@ -359,7 +360,6 @@ class ChatJoiner:
                     return ChatType.CHANNEL
 
             entity = await client.get_entity(chat_link)
-            print(entity.title)
             if isinstance(entity, Channel):
                 return ChatType.GROUP if entity.megagroup else ChatType.CHANNEL
             elif isinstance(entity, Chat):
@@ -373,8 +373,7 @@ class ChatJoiner:
             if "you are not part of" in str(e).lower():
                 return ChatType.GROUP
             elif "A wait of" in str(e):
-                wait_time = int("".join(filter(str.isdigit, str(e))))
-                return JoinStatus.FLOOD, wait_time
+                return JoinStatus.FLOOD
             logger.error(f"Ошибка при определении типа чата {chat_link}: {e}", exc_info=True)
             return ChatType.UNKNOWN
 
