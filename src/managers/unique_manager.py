@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 from PIL import Image, ImageEnhance, ImageFilter
 from moviepy.editor import VideoFileClip
 from src.logger import console
+from src.chatgpt import ChatGPTClient
 
 
 class UniqueManager:
@@ -15,6 +16,7 @@ class UniqueManager:
     def __init__(self, config, account_phone: str):
         self.config = config
         self.account_phone = account_phone
+        self.chatgpt_client = ChatGPTClient(config)
         self.replacements = self._load_replacements(config.uniqueness.text.replacements_file)
 
     def _load_replacements(self, replacements_file: str) -> Dict[str, str]:
@@ -39,7 +41,7 @@ class UniqueManager:
             console.log(f"Файл {replacements_file} не найден. Замены слов не будут применены.", style="yellow")
         return replacements
 
-    def unique_text(self, text: str) -> str:
+    async def unique_text(self, text: str) -> str:
         """
         Уникализация текста:
         - Замена слов по правилам.
@@ -59,7 +61,7 @@ class UniqueManager:
             text = self._mask_characters(text)
 
         if self.config.uniqueness.text.rewrite:
-            text = self._rewrite_with_chatgpt(text)
+            text = await self._rewrite_with_chatgpt(text)
 
         return text
 
@@ -92,7 +94,7 @@ class UniqueManager:
                 result.append(char)
         return "".join(result)
 
-    def _rewrite_with_chatgpt(self, text: str) -> str:
+    async def _rewrite_with_chatgpt(self, text: str) -> str:
         """
         Рерайт текста через ChatGPT.
 
@@ -102,12 +104,10 @@ class UniqueManager:
         Returns:
             str: Переписанный текст.
         """
-        # Здесь должен быть код для взаимодействия с ChatGPT API
-        # Например:
-        # response = chatgpt_client.rewrite(text)
-        # return response
         console.log("Рерайт текста через ChatGPT...", style="cyan")
-        return text  # Заглушка
+
+        response = await self.chatgpt_client.rewrite(text)
+        return response
 
     def unique_image(self, image_path: str) -> str:
         """

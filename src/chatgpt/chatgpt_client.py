@@ -3,6 +3,7 @@ import openai
 from openai import OpenAI
 from config import Config
 from src.logger import logger, console
+from src.managers import FileManager
 
 
 class ChatGPTClient:
@@ -18,7 +19,17 @@ class ChatGPTClient:
             config (Config): Configuration object with settings like OpenAI API key.
         """
         self.config = config
-        self.openai_client = OpenAI(api_key=self.config.openai_api_key)
+        self.prompt = self.get_prompt()
+        self.openai_client = OpenAI(api_key=self.config.api.openai_api_key)
+
+    def get_prompt(self) -> str:
+        prompt = FileManager._read_file("prompt.txt")
+        return prompt.pop()
+
+    async def rewrite(self, text: str) -> None:
+        prompt_with_text = self.prompt.format(text=text)
+        answer = await self.generate_answer(prompt_with_text)
+        return answer
 
     async def generate_answer(self, prompt: str) -> Optional[str]:
         """
@@ -35,7 +46,7 @@ class ChatGPTClient:
 
         try:
             response = self.openai_client.chat.completions.create(
-                model=self.config.chat_gpt_model,
+                model=self.config.api.chat_gpt_model,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant and interesting chatter."},
                     {"role": "user", "content": prompt}

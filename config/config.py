@@ -33,6 +33,7 @@ class TextUniquenessSettings(BaseModel):
     rewrite: bool = Field(default=True, description="Использовать рерайт через ChatGPT")
     symbol_masking: bool = Field(default=True, description="Маскировка RU-EN символов")
     replacements_file: str = Field(default="Замены.txt", description="Файл с заменами слов")
+    prompt_file: str = Field(default="prompt.txt", description="Файл с промптом")
 
 
 class ImageUniquenessSettings(BaseModel):

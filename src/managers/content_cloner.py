@@ -181,7 +181,7 @@ class ContentCloner:
         unique_content = {}
 
         if content.get("text"):
-            unique_content["text"] = self.unique_manager.unique_text(content["text"])
+            unique_content["text"] = await self.unique_manager.unique_text(content["text"])
 
         if content.get("photo"):
             unique_content["photo"] = self.unique_manager.unique_image(content["photo"])
@@ -239,7 +239,7 @@ class ContentCloner:
             if not content.get("text") and not any(key in content for key in ["photo", "video", "audio", "video_note"]):
                 console.print(f"Пустой контент. Пропускаем публикацию в канал {target_channel}", style="yellow")
                 return
-
+            print(content)
             caption = content.get("text", "")
             if len(caption) > 1024:
                 caption = caption[:1021] + "..."
