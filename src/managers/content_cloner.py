@@ -267,12 +267,6 @@ class ContentCloner:
             logger.error(f"Ошибка при публикации контента в канал {target_channel}: {e}")
 
     def _delete_file(self, file_path: str) -> None:
-        """
-        Удаляет временный файл после публикации.
-
-        Args:
-            file_path (str): Путь к файлу.
-        """
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
@@ -289,12 +283,6 @@ class ContentCloner:
             logger.error(f"Ошибка при удалении файла {file_path}: {e}")
 
     async def _random_delay(self, delay_range: tuple[int, int]) -> None:
-        """
-        Introduces a random delay between sending messages.
-
-        Args:
-            delay_range (tuple[int, int]): The range of delays (in seconds).
-        """
         delay = random.randint(*delay_range)
         console.print(f"Задержка {delay} секунд", style="yellow")
         await asyncio.sleep(delay)
