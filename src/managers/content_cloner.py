@@ -2,7 +2,7 @@ import asyncio
 import random
 from typing import Dict, List
 from telethon import TelegramClient, events
-from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, DocumentAttributeVideo
 from telethon.errors import FloodWaitError
 from src.logger import console, logger
 from src.managers import FileManager
@@ -146,13 +146,17 @@ class ContentCloner:
             if isinstance(message.media, MessageMediaPhoto):
                 content["photo"] = await message.download_media(file="downloads/")
             elif isinstance(message.media, MessageMediaDocument):
-                if message.document.mime_type.startswith("video"):
-                    content["video"] = await message.download_media(file="downloads/")
-                elif message.document.mime_type.startswith("audio"):
-                    content["audio"] = await message.download_media(file="downloads/")
-
-        if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
-            console.print(f"Сообщение {message.id} не содержит текста или медиафайлов", style="yellow")
+                document = message.media.document
+                for attr in document.attributes:
+                    if isinstance(attr, DocumentAttributeVideo) and attr.round_message:
+                        content["video"] = await message.download_media(file="downloads/")
+                        content["is_round"] = True
+                        break
+                else:
+                    if document.mime_type.startswith("video"):
+                        content["video"] = await message.download_media(file="downloads/")
+                    elif document.mime_type.startswith("audio"):
+                        content["audio"] = await message.download_media(file="downloads/")
 
         return content
 
@@ -168,7 +172,7 @@ class ContentCloner:
             content = await self._extract_content(message)
 
             if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
-                console.print(f"Сообщение пустое. Пропускаем.", style="yellow")
+                console.print("Сообщение пустое. Пропускаем.", style="yellow")
                 return
 
             # unique_content = self.unique_content_manager.make_unique(content)
@@ -194,24 +198,30 @@ class ContentCloner:
             content (Dict): The unique content to publish.
         """
         try:
-            if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
+            if not content.get("text") and not any(key in content for key in ["photo", "video", "audio", "video_note"]):
                 console.print(f"Пустой контент. Пропускаем публикацию в канал {target_channel}", style="yellow")
                 return
 
             caption = content.get("text", "")
             if len(caption) > 1024:
-                caption = caption[:1021]
+                caption = caption[:1021] + "..."
 
             if content.get("photo"):
                 await client.send_file(target_channel, content["photo"], caption=caption)
             elif content.get("video"):
-                await client.send_file(target_channel, content["video"], caption=caption)
+                if content.get("is_round"):
+                    await client.send_file(target_channel, content["video"], video_note=True)
+                else:
+                    await client.send_file(target_channel, content["video"], caption=caption)
             elif content.get("audio"):
                 await client.send_file(target_channel, content["audio"], caption=caption)
+            elif content.get("video_note"):
+                await client.send_file(target_channel, content["video_note"], video_note=True)
             else:
                 await client.send_message(target_channel, caption)
         except Exception as e:
             logger.error(f"Ошибка при публикации контента в канал {target_channel}: {e}")
+            console.print(f"Ошибка при публикации контента в канал {target_channel}: {e}", style="red")
 
     async def _random_delay(self, delay_range: tuple[int, int]) -> None:
         """
