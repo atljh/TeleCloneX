@@ -168,6 +168,32 @@ class ContentCloner:
 
         return content
 
+    async def _make_content_unique(self, content: Dict) -> Dict:
+        """
+        Unuqie message content
+
+        Args:
+            content (Dict): Original content.
+
+        Returns:
+            Dict: Uniquiezed content.
+        """
+        unique_content = {}
+
+        if content.get("text"):
+            unique_content["text"] = self.unique_manager.unique_text(content["text"])
+
+        if content.get("photo"):
+            unique_content["photo"] = self.unique_manager.unique_image(content["photo"])
+
+        if content.get("video"):
+            unique_content["video"] = self.unique_manager.unique_video(content["video"])
+
+        if content.get("audio"):
+            unique_content["audio"] = content["audio"]
+
+        return unique_content
+
     async def _process_message(self, client: TelegramClient, message) -> None:
         """
         Processes a message: extracts content, makes it unique, and publishes it to the target channel.
