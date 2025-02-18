@@ -2,10 +2,13 @@ import asyncio
 import random
 from typing import Dict, List
 from telethon import TelegramClient, events
-from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, DocumentAttributeVideo
+from telethon.tl.types import (
+    MessageMediaPhoto, MessageMediaDocument, DocumentAttributeVideo
+)
 from telethon.errors import FloodWaitError
 from src.logger import console, logger
 from src.managers import FileManager
+from src.managers.unique_manager import UniqueManager
 
 
 class ContentCloner:
@@ -42,6 +45,7 @@ class ContentCloner:
         self.mode = config.cloning.mode
         self.post_delay = config.timeouts.post_delay
         self.posts_to_clone = config.cloning.posts_to_clone
+        self.unique_manager = UniqueManager(config, self.account_phone)
         self._running = False
 
     def get_target_channels(self) -> List[str]:
@@ -69,9 +73,11 @@ class ContentCloner:
             return
         self._running = True
         if self.mode == 'history':
-            return await self._clone_history(self.client)
+            await self._clone_history(self.client)
         elif self.mode == 'live':
-            return await self._monitor_realtime(self.client)
+            await self._monitor_realtime(self.client)
+        else:
+            console.print(f"Неизвестный режим работы: {self.mode}", style="red")
 
     async def stop(self) -> None:
         self._running = False
@@ -82,7 +88,7 @@ class ContentCloner:
         Checks if the channel is accessible.
 
         Args:
-            client (TelegramClient): The Telegram client instance.
+            client (TelethonClient): The Telegram client instance.
             channel (str): The channel name or link.
 
         Returns:
@@ -102,7 +108,9 @@ class ContentCloner:
 
         for channel in self.source_channels:
             if not await self._check_channel_access(client, channel):
+                console.print(f"Канал {channel} недоступен. Пропускаем.", style="yellow")
                 continue
+
             console.print(f"Клонирование последних {self.posts_to_clone} постов в канале {channel}", style="blue")
             try:
                 async for message in client.iter_messages(channel, limit=self.posts_to_clone):
@@ -118,7 +126,7 @@ class ContentCloner:
         """
         Monitors the source channel for new posts and clones them in real-time.
         """
-        console.print(f"{self.account_phone} | Запущено клонирование с каналов в реальном времеин", style="blue")
+        console.print(f"{self.account_phone} | Запущено клонирование с каналов в реальном времени", style="blue")
 
         @client.on(events.NewMessage(chats=self.source_channels))
         async def handler(event):
@@ -165,7 +173,7 @@ class ContentCloner:
         Processes a message: extracts content, makes it unique, and publishes it to the target channel.
 
         Args:
-            client (TelegramClient): The Telegram client instance.
+            client (TelethonClient): The Telegram client instance.
             message: The message to process.
         """
         try:
@@ -175,11 +183,15 @@ class ContentCloner:
                 console.print("Сообщение пустое. Пропускаем.", style="yellow")
                 return
 
-            # unique_content = self.unique_content_manager.make_unique(content)
             for channel in self.target_channels:
                 if not await self._check_channel_access(client, channel):
+                    console.print(f"Канал {channel} недоступен. Пропускаем.", style="yellow")
                     continue
-                await self._publish_content(client, content, channel)
+
+                unique_content = await self._make_content_unique(content)
+
+                await self._publish_content(client, unique_content, channel)
+
                 console.print(f"Сообщение опубликовано в канал {channel}", style="green")
         except Exception as e:
             logger.error(f"Ошибка при обработке сообщения: {e}")
@@ -194,7 +206,7 @@ class ContentCloner:
         Publishes unique content to the target channel.
 
         Args:
-            client (TelegramClient): The Telegram client instance.
+            client (TelethonClient): The Telegram client instance.
             content (Dict): The unique content to publish.
         """
         try:
@@ -231,4 +243,5 @@ class ContentCloner:
             delay_range (tuple[int, int]): The range of delays (in seconds).
         """
         delay = random.randint(*delay_range)
+        console.print(f"Задержка {delay} секунд", style="yellow")
         await asyncio.sleep(delay)
