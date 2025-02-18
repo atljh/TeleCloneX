@@ -240,7 +240,6 @@ class ContentCloner:
             if not content.get("text") and not any(key in content for key in ["photo", "video", "audio", "video_note"]):
                 console.print(f"Пустой контент. Пропускаем публикацию в канал {target_channel}", style="yellow")
                 return
-            print(content)
             caption = content.get("text", "")
             if len(caption) > 1024:
                 caption = caption[:1021] + "..."
@@ -280,6 +279,12 @@ class ContentCloner:
                 console.print(f"Файл {file_path} удален.", style="green")
             else:
                 console.print(f"Файл {file_path} не найден.", style="yellow")
+            original_file = f'downloads/{file_path.replace("unique_", "")}'
+            if os.path.exists(original_file):
+                os.remove(original_file)
+                console.print(f"Файл {original_file} удален.", style="green")
+            else:
+                console.print(f"Файл {original_file} не найден.", style="yellow")
         except Exception as e:
             logger.error(f"Ошибка при удалении файла {file_path}: {e}")
 
