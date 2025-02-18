@@ -98,7 +98,9 @@ class Cloner(BaseThon):
             result = await self._handle_join_status(
                 join_status, self.client, self.account_phone, chat
             )
-            return result
+            if not result:
+                return result
+        return result
 
     async def _handle_join_status(
         self,

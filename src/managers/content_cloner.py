@@ -103,7 +103,7 @@ class ContentCloner:
         for channel in self.source_channels:
             if not await self._check_channel_access(client, channel):
                 continue
-            console.print(f"Клонирование последних {self.posts_to_clone} постов в канале {channel}...", style="blue")
+            console.print(f"Клонирование последних {self.posts_to_clone} постов в канале {channel}", style="blue")
             try:
                 async for message in client.iter_messages(channel, limit=self.posts_to_clone):
                     if not self._running:
@@ -118,7 +118,7 @@ class ContentCloner:
         """
         Monitors the source channel for new posts and clones them in real-time.
         """
-        console.print("Запущено клонирование с каналов в реальном времени...", style="blue")
+        console.print(f"{self.account_phone} | Запущено клонирование с каналов в реальном времеин", style="blue")
 
         @client.on(events.NewMessage(chats=self.source_channels))
         async def handler(event):
