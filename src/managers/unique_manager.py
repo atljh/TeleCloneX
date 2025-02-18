@@ -1,7 +1,6 @@
 import os
 import random
-import hashlib
-from typing import Dict, List, Tuple
+from typing import Dict
 from PIL import Image, ImageEnhance, ImageFilter
 from moviepy.editor import VideoFileClip
 from src.logger import console
@@ -10,9 +9,8 @@ from src.chatgpt import ChatGPTClient
 
 class UniqueManager:
     """
-    Класс для уникализации контента: текста, изображений и видео.
+    A class for content uniqueness management: text, images, and videos.
     """
-
     def __init__(self, config, account_phone: str):
         self.config = config
         self.account_phone = account_phone
@@ -21,13 +19,13 @@ class UniqueManager:
 
     def _load_replacements(self, replacements_file: str) -> Dict[str, str]:
         """
-        Загружает правила замены слов из файла.
+        Loads word replacement rules from a file.
 
         Args:
-            replacements_file (str): Путь к файлу с правилами замены.
+            replacements_file (str): Path to the file with replacement rules.
 
         Returns:
-            Dict[str, str]: Словарь с правилами замены.
+            Dict[str, str]: Dictionary with replacement rules.
         """
         replacements = {}
         try:
@@ -43,16 +41,16 @@ class UniqueManager:
 
     async def unique_text(self, text: str) -> str:
         """
-        Уникализация текста:
-        - Замена слов по правилам.
-        - Маскировка символов RU-EN.
-        - Рерайт текста через ChatGPT (если включено).
+        Text uniqueness:
+        - Replace words according to rules.
+        - Mask characters with RU-EN substitutions.
+        - Rewrite text using ChatGPT (if enabled).
 
         Args:
-            text (str): Исходный текст.
+            text (str): Input text.
 
         Returns:
-            str: Уникализированный текст.
+            str: Unique text.
         """
         for original, replacement in self.replacements.items():
             text = text.replace(original, replacement)
@@ -67,13 +65,13 @@ class UniqueManager:
 
     def _mask_characters(self, text: str) -> str:
         """
-        Маскировка похожих символов RU-EN.
+        Masks similar characters using RU-EN substitutions.
 
         Args:
-            text (str): Исходный текст.
+            text (str): Input text.
 
         Returns:
-            str: Текст с замененными символами.
+            str: Text with substituted characters.
         """
         char_map = {
             "а": ["а", "a"], "А": ["А", "A"],
@@ -96,13 +94,13 @@ class UniqueManager:
 
     async def _rewrite_with_chatgpt(self, text: str) -> str:
         """
-        Рерайт текста через ChatGPT.
+        Rewrites text using ChatGPT.
 
         Args:
-            text (str): Исходный текст.
+            text (str): Input text.
 
         Returns:
-            str: Переписанный текст.
+            str: Rewritten text.
         """
         console.log("Рерайт текста через ChatGPT...", style="cyan")
 
@@ -111,18 +109,19 @@ class UniqueManager:
 
     def unique_image(self, image_path: str) -> str:
         """
-        Уникализация изображения:
-        - Кадрирование.
-        - Изменение яркости и контраста.
-        - Поворот.
-        - Удаление/замена метаданных.
-        - Добавление фильтров.
+        Video uniqueness:
+        - Changing hash.
+        - Adding invisible elements.
+        - Adjusting FPS.
+        - Modifying audio speed.
+        - Cropping, brightness, contrast, rotation.
+        - Removing/replacing metadata.
 
         Args:
-            image_path (str): Путь к исходному изображению.
+            video_path (str): Path to the input video.
 
         Returns:
-            str: Путь к уникализированному изображению.
+            str: Path to the unique video.
         """
         console.log(f"Уникализация изображения: {image_path}", style="cyan")
         image = Image.open(image_path)
@@ -141,9 +140,8 @@ class UniqueManager:
                                          1 + self.config.uniqueness.image.contrast[1] / 100)
         image = enhancer.enhance(contrast_factor)
 
-        # Поворот
         if self.config.uniqueness.image.rotation:
-            angle = random.randint(-5, 5)
+            angle = random.randint(-2, 2)
             image = image.rotate(angle)
 
         if self.config.uniqueness.image.filters:
