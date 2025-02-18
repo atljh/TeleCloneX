@@ -1,3 +1,4 @@
+import os
 import asyncio
 import random
 from typing import Dict, List
@@ -246,20 +247,41 @@ class ContentCloner:
 
             if content.get("photo"):
                 await client.send_file(target_channel, content["photo"], caption=caption)
+                self._delete_file(content["photo"])
             elif content.get("video"):
                 if content.get("is_round"):
                     await client.send_file(target_channel, content["video"], video_note=True)
+                    self._delete_file(content["video"])
                 else:
                     await client.send_file(target_channel, content["video"], caption=caption)
+                    self._delete_file(content["video"])
             elif content.get("audio"):
                 await client.send_file(target_channel, content["audio"], caption=caption)
+                self._delete_file(content["audio"])
             elif content.get("video_note"):
                 await client.send_file(target_channel, content["video_note"], video_note=True)
+                self._delete_file(content["video_note"])
             else:
                 await client.send_message(target_channel, caption)
+
         except Exception as e:
             logger.error(f"Ошибка при публикации контента в канал {target_channel}: {e}")
-            console.print(f"Ошибка при публикации контента в канал {target_channel}: {e}", style="red")
+
+    def _delete_file(self, file_path: str) -> None:
+        """
+        Удаляет временный файл после публикации.
+
+        Args:
+            file_path (str): Путь к файлу.
+        """
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                console.print(f"Файл {file_path} удален.", style="green")
+            else:
+                console.print(f"Файл {file_path} не найден.", style="yellow")
+        except Exception as e:
+            logger.error(f"Ошибка при удалении файла {file_path}: {e}")
 
     async def _random_delay(self, delay_range: tuple[int, int]) -> None:
         """
