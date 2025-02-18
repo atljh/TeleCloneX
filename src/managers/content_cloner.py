@@ -168,7 +168,7 @@ class ContentCloner:
             content = await self._extract_content(message)
 
             if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
-                console.print(f"Сообщение {message.id} пустое. Пропускаем.", style="yellow")
+                console.print(f"Сообщение пустое. Пропускаем.", style="yellow")
                 return
 
             # unique_content = self.unique_content_manager.make_unique(content)
@@ -176,10 +176,9 @@ class ContentCloner:
                 if not await self._check_channel_access(client, channel):
                     continue
                 await self._publish_content(client, content, channel)
-                console.print(f"Сообщение {message.id} опубликовано в канал {channel}", style="green")
+                console.print(f"Сообщение опубликовано в канал {channel}", style="green")
         except Exception as e:
-            logger.error(f"Ошибка при обработке сообщения {message.id}: {e}")
-            console.print(f"Ошибка при обработке сообщения {message.id}: {e}", style="red")
+            logger.error(f"Ошибка при обработке сообщения: {e}")
 
     async def _publish_content(
         self,
