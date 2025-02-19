@@ -50,6 +50,7 @@ class VideoUniquenessSettings(BaseModel):
     watermark: bool = Field(default=True, description="Добавление невидимых элементов")
     frame_rate_variation: bool = Field(default=True, description="Изменение FPS")
     audio_speed: Tuple[int, int] = Field(default=(2, 4), description="Изменение скорости аудио в %")
+    metadata: str = Field(default="replace", description="Удаление или замена метаданных")
 
 
 class UniquenessSettings(BaseModel):

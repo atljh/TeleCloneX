@@ -212,13 +212,8 @@ class UniqueManager:
         video = VideoFileClip(video_path)
 
         if self.config.uniqueness.video.frame_rate_variation:
-            new_fps = video.fps * random.uniform(0.98, 1.02)
+            new_fps = video.fps * 1.02
             video = video.set_fps(new_fps)
-
-        if self.config.uniqueness.video.audio_speed:
-            speed_factor = random.uniform(1 + self.config.uniqueness.video.audio_speed[0] / 100,
-                                         1 + self.config.uniqueness.video.audio_speed[1] / 100)
-            video = video.fx(lambda clip: clip.speedx(factor=speed_factor))
 
         unique_video_path = f"unique_{os.path.basename(video_path)}"
         video.write_videofile(unique_video_path, codec="libx264")
@@ -240,6 +235,7 @@ class UniqueManager:
         try:
             command = [
                 "ffmpeg",
+                "-loglevel", "error",
                 "-i", video_path,
                 "-metadata", "artist=UniqueManager",
                 "-metadata", "software=ContentCloner",
@@ -262,6 +258,7 @@ class UniqueManager:
         try:
             command = [
                 "ffmpeg",
+                "-loglevel", "error",
                 "-i", video_path,
                 "-map_metadata", "-1",
                 "-c", "copy",
