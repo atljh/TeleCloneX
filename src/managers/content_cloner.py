@@ -112,9 +112,15 @@ class ContentCloner:
                 console.print(f"Канал {channel} недоступен. Пропускаем.", style="yellow")
                 continue
 
-            console.print(f"Клонирование последних {self.posts_to_clone} постов в канале {channel}", style="blue")
+            console.print(f"Клонирование последних {self.posts_to_clone} постов (от старых к новым) в канале {channel}", style="blue")
             try:
+                messages = []
                 async for message in client.iter_messages(channel, limit=self.posts_to_clone):
+                    messages.append(message)
+
+                messages.reverse()
+
+                for message in messages:
                     if not self._running:
                         break
                     await self._process_message(client, message)

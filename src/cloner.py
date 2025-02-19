@@ -136,25 +136,28 @@ class Cloner(BaseThon):
                 )
                 self.blacklist.add_to_blacklist(account_phone, chat)
             case JoinStatus.FLOOD:
-                mute_seconds = await self.check_flood_wait(client)
-                console.print(mute_seconds)
-
-                if not mute_seconds:
-                    return True
-                flood_limit = self.config.timeouts.flood_wait_limit
-                if mute_seconds:
-                    if mute_seconds <= flood_limit:
-                        console.print(
-                            f"{account_phone} | Флуд {mute_seconds} секунд, делаем паузу...",
-                            style="yellow"
-                        )
-                        await asyncio.sleep(mute_seconds)
-                    else:
-                        console.print(
-                            f"{account_phone} | Флуд {mute_seconds} секунд, приостанавливаем работу",
-                            style="yellow"
-                        )
-                        return False
+                # mute_seconds = await self.check_flood_wait(client)
+                console.print(
+                    f"{account_phone} | Флуд, приостанавливаем работу",
+                    style="yellow"
+                )
+                return False
+                # if not mute_seconds:
+                #     return True
+                # flood_limit = self.config.timeouts.flood_wait_limit
+                # if mute_seconds:
+                #     if mute_seconds <= flood_limit:
+                #         console.print(
+                #             f"{account_phone} | Флуд {mute_seconds} секунд, делаем паузу...",
+                #             style="yellow"
+                #         )
+                #         await asyncio.sleep(mute_seconds)
+                #     else:
+                #         console.print(
+                #             f"{account_phone} | Флуд {mute_seconds} секунд, приостанавливаем работу",
+                #             style="yellow"
+                #         )
+                #         return False
             case JoinStatus.ALREADY_JOINED:
                 console.log(
                     f"Аккаунт {account_phone} уже состоит в чате {chat}",
