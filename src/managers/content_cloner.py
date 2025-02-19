@@ -193,6 +193,8 @@ class ContentCloner:
         if content.get("audio"):
             unique_content["audio"] = content["audio"]
 
+        unique_content['is_round'] = content.get('is_round')
+
         return unique_content
 
     async def _process_message(self, client: TelegramClient, message) -> None:
@@ -205,7 +207,6 @@ class ContentCloner:
         """
         try:
             content = await self._extract_content(message)
-
             if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
                 console.print("Сообщение пустое. Пропускаем.", style="yellow")
                 return
@@ -217,9 +218,9 @@ class ContentCloner:
 
                 unique_content = await self._make_content_unique(content)
 
-                await self._publish_content(client, unique_content, channel)
-
-                console.print(f"Сообщение опубликовано в канал {channel}", style="green")
+                result = await self._publish_content(client, unique_content, channel)
+                if result:
+                    console.print(f"Сообщение опубликовано в канал {channel}", style="green")
         except Exception as e:
             logger.error(f"Ошибка при обработке сообщения: {e}")
 
@@ -228,7 +229,7 @@ class ContentCloner:
         client: TelegramClient,
         content: Dict,
         target_channel: str
-    ) -> None:
+    ) -> bool:
         """
         Publishes unique content to the target channel.
 
@@ -262,9 +263,13 @@ class ContentCloner:
                 self._delete_file(content["video_note"])
             else:
                 await client.send_message(target_channel, caption)
-
+            return True
         except Exception as e:
+            if "You can't write" in str(e):
+                logger.error(f"{self.account_phone} | Не может публиковать в канал {target_channel}")
+                return False
             logger.error(f"Ошибка при публикации контента в канал {target_channel}: {e}")
+            return False
 
     def _delete_file(self, file_path: str) -> None:
         try:

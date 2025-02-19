@@ -36,7 +36,7 @@ class Starter(BaseSession):
                     logger.error(f"Ошибка при работе акканута {item}: {e}")
                     r = "ERROR_UNKNOWN"
             if "ERROR_AUTH" in r:
-                logger.error(f"Ошибка при работе акканута {item}")
+                logger.error(f"{item} | Аккаунт забанен или разлогинен")
                 move_item(item, self.banned_dir, True, True)
                 move_item(json_file, self.banned_dir, True, True)
                 return
