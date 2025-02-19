@@ -1,9 +1,13 @@
 import os
 import random
 from typing import Dict
+import piexif
+from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+import subprocess
+
 from PIL import Image, ImageEnhance, ImageFilter
 from moviepy.editor import VideoFileClip
-from src.logger import console
+from src.logger import console, logger
 from src.chatgpt import ChatGPTClient
 
 
@@ -110,19 +114,18 @@ class UniqueManager:
 
     def unique_image(self, image_path: str) -> str:
         """
-        Video uniqueness:
-        - Changing hash.
-        - Adding invisible elements.
-        - Adjusting FPS.
-        - Modifying audio speed.
-        - Cropping, brightness, contrast, rotation.
+        Image uniqueness:
+        - Cropping.
+        - Adjusting brightness and contrast.
+        - Rotation.
         - Removing/replacing metadata.
+        - Adding filters.
 
         Args:
-            video_path (str): Path to the input video.
+            image_path (str): Path to the input image.
 
         Returns:
-            str: Path to the unique video.
+            str: Path to the unique image.
         """
         console.log(f"Уникализация изображения: {image_path}", style="cyan")
         image = Image.open(image_path)
@@ -150,23 +153,60 @@ class UniqueManager:
 
         unique_image_path = f"unique_{os.path.basename(image_path)}"
         image.save(unique_image_path)
+
+        if self.config.uniqueness.image.metadata == "replace":
+            self._replace_image_metadata(unique_image_path)
+        elif self.config.uniqueness.image.metadata == "remove":
+            self._remove_image_metadata(unique_image_path)
+
         return unique_image_path
+
+    def _replace_image_metadata(self, image_path: str) -> None:
+        """
+        Replaces image metadata with custom data.
+
+        Args:
+            image_path (str): Path to the image.
+        """
+        try:
+            exif_dict = piexif.load(image_path)
+            exif_dict["0th"][piexif.ImageIFD.Artist] = "UniqueManager"
+            exif_dict["0th"][piexif.ImageIFD.Software] = "ContentCloner"
+            piexif.insert(piexif.dump(exif_dict), image_path)
+            console.print(f"Метаданные изображения {image_path} заменены.", style="green")
+        except Exception as e:
+            logger.error(f"Ошибка при замене метаданных изображения: {e}")
+            console.print(f"Ошибка при замене метаданных изображения: {e}", style="red")
+
+    def _remove_image_metadata(self, image_path: str) -> None:
+        """
+        Removes metadata from an image.
+
+        Args:
+            image_path (str): Path to the image.
+        """
+        try:
+            piexif.remove(image_path)
+            console.print(f"Метаданные изображения {image_path} удалены.", style="green")
+        except Exception as e:
+            logger.error(f"Ошибка при удалении метаданных изображения: {e}")
+            console.print(f"Ошибка при удалении метаданных изображения: {e}", style="red")
 
     def unique_video(self, video_path: str) -> str:
         """
-        Уникализация видео:
-        - Изменение хеша.
-        - Наложение невидимых элементов.
-        - Изменение FPS.
-        - Ускорение аудио.
-        - Кадрирование, яркость, контраст, поворот.
-        - Удаление/замена метаданных.
+        Video uniqueness:
+        - Changing hash.
+        - Adding invisible elements.
+        - Adjusting FPS.
+        - Modifying audio speed.
+        - Cropping, brightness, contrast, rotation.
+        - Removing/replacing metadata.
 
         Args:
-            video_path (str): Путь к исходному видео.
+            video_path (str): Path to the input video.
 
         Returns:
-            str: Путь к уникализированному видео.
+            str: Path to the unique video.
         """
         console.log(f"Уникализация видео: {video_path}", style="cyan")
         video = VideoFileClip(video_path)
@@ -182,4 +222,53 @@ class UniqueManager:
 
         unique_video_path = f"unique_{os.path.basename(video_path)}"
         video.write_videofile(unique_video_path, codec="libx264")
+
+        if self.config.uniqueness.video.metadata == "replace":
+            self._replace_video_metadata(unique_video_path)
+        elif self.config.uniqueness.video.metadata == "remove":
+            self._remove_video_metadata(unique_video_path)
+
         return unique_video_path
+
+    def _replace_video_metadata(self, video_path: str) -> None:
+        """
+        Replaces video metadata with custom data.
+
+        Args:
+            video_path (str): Path to the video.
+        """
+        try:
+            command = [
+                "ffmpeg",
+                "-i", video_path,
+                "-metadata", "artist=UniqueManager",
+                "-metadata", "software=ContentCloner",
+                "-c", "copy",
+                f"temp_{video_path}"
+            ]
+            subprocess.run(command, check=True)
+            os.replace(f"temp_{video_path}", video_path)
+            console.print(f"Метаданные видео {video_path} заменены.", style="green")
+        except Exception as e:
+            logger.error(f"Ошибка при замене метаданных видео: {e}")
+
+    def _remove_video_metadata(self, video_path: str) -> None:
+        """
+        Removes metadata from a video.
+
+        Args:
+            video_path (str): Path to the video.
+        """
+        try:
+            command = [
+                "ffmpeg",
+                "-i", video_path,
+                "-map_metadata", "-1",
+                "-c", "copy",
+                f"temp_{video_path}"
+            ]
+            subprocess.run(command, check=True)
+            os.replace(f"temp_{video_path}", video_path)
+            console.print(f"Метаданные видео {video_path} удалены.", style="green")
+        except Exception as e:
+            logger.error(f"Ошибка при удалении метаданных видео: {e}")
