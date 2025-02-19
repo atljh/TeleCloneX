@@ -1,6 +1,7 @@
 import os
 import asyncio
 import random
+from collections import deque
 from typing import Dict, List
 from telethon import TelegramClient, events
 from telethon.tl.types import (
@@ -47,6 +48,7 @@ class ContentCloner:
         self.post_delay = config.timeouts.post_delay
         self.posts_to_clone = config.cloning.posts_to_clone
         self.unique_manager = UniqueManager(config, self.account_phone)
+        self.processed_albums = deque(maxlen=500)
         self._running = False
 
     def get_target_channels(self) -> List[str]:
@@ -139,8 +141,15 @@ class ContentCloner:
         async def handler(event):
             if not self._running:
                 return
-            await self._process_message(client, event.message)
-            await self._random_delay(self.post_delay)
+            if event.grouped_id:
+                if event.grouped_id in self.processed_albums:
+                    return
+                self.processed_albums.append(event.grouped_id)
+                await self._process_album(client, event.message)
+                await self._random_delay(self.post_delay)
+            else:
+                await self._process_message(client, event.message)
+                await self._random_delay(self.post_delay)
 
         while self._running:
             await asyncio.sleep(1)
@@ -156,7 +165,6 @@ class ContentCloner:
             Dict: A dictionary containing the extracted content.
         """
         content = {"text": message.text or ""}
-
         if message.media:
             if isinstance(message.media, MessageMediaPhoto):
                 content["photo"] = await message.download_media(file="downloads/")
@@ -206,29 +214,74 @@ class ContentCloner:
     async def _process_message(self, client: TelegramClient, message) -> None:
         """
         Processes a message: extracts content, makes it unique, and publishes it to the target channel.
+        Supports albums (groups of media files).
 
         Args:
-            client (TelethonClient): The Telegram client instance.
+            client (TelegramClient): The Telegram client instance.
             message: The message to process.
         """
         try:
-            content = await self._extract_content(message)
-            if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
-                console.print("Сообщение пустое. Пропускаем.", style="yellow")
-                return
+            if message.grouped_id:
+                console.print(
+                    style="blue"
+                )
+                await self._process_album(client, message)
+            else:
+                await self._process_single_message(client, message)
+        except Exception as e:
+            logger.error(f"Ошибка при обработке сообщения: {e}")
+            console.print(f"Ошибка при обработке сообщения: {e}", style="red")
 
+    async def _process_single_message(self, client: TelegramClient, message):
+        content = await self._extract_content(message)
+        if not content.get("text") and not any(key in content for key in ["photo", "video", "audio"]):
+            console.print("Сообщение пустое. Пропускаем.", style="yellow")
+            return
+
+        for channel in self.target_channels:
+            if not await self._check_channel_access(client, channel):
+                console.print(f"Канал {channel} недоступен. Пропускаем.", style="yellow")
+                continue
+
+            unique_content = await self._make_content_unique(content)
+
+            result = await self._publish_content(client, unique_content, channel)
+            if result:
+                console.print(f"Сообщение опубликовано в канал {channel}", style="green")
+
+    async def _process_album(self, client: TelegramClient, message) -> None:
+        """
+        Processes an album of messages (grouped media files).
+        """
+        try:
+            all_messages = []
+            async for msg in client.iter_messages(
+                message.chat_id,
+                limit=20
+            ):
+                all_messages.append(msg)
+
+            album_messages = [msg for msg in all_messages if msg.grouped_id == message.grouped_id]
+            album_messages.reverse()
+            if not album_messages:
+                console.print(f"Не удалось найти сообщения альбома с grouped_id: {message.grouped_id}", style="yellow")
+                return
+            console.print(f"Найден альбом из {len(album_messages)} сообщений.", style="blue")
+
+            unique_contents = []
+            for msg in album_messages:
+                content = await self._extract_content(msg)
+                unique_content = await self._make_content_unique(content)
+                unique_contents.append(unique_content)
             for channel in self.target_channels:
                 if not await self._check_channel_access(client, channel):
                     console.print(f"Канал {channel} недоступен. Пропускаем.", style="yellow")
                     continue
 
-                unique_content = await self._make_content_unique(content)
-
-                result = await self._publish_content(client, unique_content, channel)
-                if result:
-                    console.print(f"Сообщение опубликовано в канал {channel}", style="green")
+                await self._publish_album(client, unique_contents, channel)
+                console.print(f"Альбом опубликован в канал {channel}", style="green")
         except Exception as e:
-            logger.error(f"Ошибка при обработке сообщения: {e}")
+            logger.error(f"Ошибка при обработке альбома: {e}")
 
     async def _publish_content(
         self,
@@ -276,6 +329,38 @@ class ContentCloner:
                 return False
             logger.error(f"Ошибка при публикации контента в канал {target_channel}: {e}")
             return False
+
+    async def _publish_album(self, client: TelegramClient, album_contents: List[Dict], channel: str) -> None:
+        """
+        Publishes an album of media files to the target channel.
+
+        Args:
+            client (TelegramClient): The Telegram client instance.
+            album_contents (List[Dict]): List of unique content dictionaries.
+            channel (str): The target channel.
+        """
+        try:
+            files = []
+            captions = []
+            for content in album_contents:
+
+                if content.get("photo"):
+                    files.append(content["photo"])
+                    captions.append(content.get("text", ""))
+                elif content.get("video"):
+                    files.append(content["video"])
+                    captions.append(content.get("text", ""))
+                elif content.get("audio"):
+                    files.append(content["audio"])
+                    captions.append(content.get("text", ""))
+            caption = ''.join(captions)
+            await client.send_file(channel, files, caption=caption)
+            console.print(f"Альбом из {len(files)} файлов опубликован в канал {channel}.", style="green")
+
+            for file in files:
+                self._delete_file(file)
+        except Exception as e:
+            logger.error(f"Ошибка при публикации альбома: {e}")
 
     def _delete_file(self, file_path: str) -> None:
         try:
