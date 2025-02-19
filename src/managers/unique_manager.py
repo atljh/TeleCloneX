@@ -103,7 +103,8 @@ class UniqueManager:
             str: Rewritten text.
         """
         console.log("Рерайт текста через ChatGPT...", style="cyan")
-
+        if len(text) < 10:
+            return text
         response = await self.chatgpt_client.rewrite(text)
         return response
 

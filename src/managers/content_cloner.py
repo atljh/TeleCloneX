@@ -134,25 +134,41 @@ class ContentCloner:
     async def _monitor_realtime(self, client: TelegramClient) -> None:
         """
         Monitors the source channel for new posts and clones them in real-time.
+        Ensures that messages are processed with a delay between them.
         """
         console.print(f"{self.account_phone} | Запущено клонирование с каналов в реальном времени", style="blue")
+
+        self.message_queue = asyncio.Queue()
 
         @client.on(events.NewMessage(chats=self.source_channels))
         async def handler(event):
             if not self._running:
                 return
-            if event.grouped_id:
-                if event.grouped_id in self.processed_albums:
-                    return
-                self.processed_albums.append(event.grouped_id)
-                await self._process_album(client, event.message)
-                await self._random_delay(self.post_delay)
-            else:
-                await self._process_message(client, event.message)
-                await self._random_delay(self.post_delay)
+            await self.message_queue.put(event)
+
+        asyncio.create_task(self._process_message_queue(client))
 
         while self._running:
             await asyncio.sleep(1)
+
+    async def _process_message_queue(self, client: TelegramClient) -> None:
+        """
+        Processes messages from the queue with a delay between them.
+        """
+        while self._running:
+            event = await self.message_queue.get()
+
+            if event.grouped_id:
+                if event.grouped_id in self.processed_albums:
+                    continue
+                self.processed_albums.append(event.grouped_id)
+                await self._process_album(client, event.message)
+            else:
+                await self._process_message(client, event.message)
+
+            await self._random_delay(self.post_delay)
+
+            self.message_queue.task_done()
 
     async def _extract_content(self, message) -> Dict:
         """
