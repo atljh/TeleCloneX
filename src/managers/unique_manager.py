@@ -141,7 +141,7 @@ class UniqueManager:
         image = enhancer.enhance(contrast_factor)
 
         if self.config.uniqueness.image.rotation:
-            angle = random.randint(-2, 2)
+            angle = random.uniform(-0.3, 0.3)
             image = image.rotate(angle)
 
         if self.config.uniqueness.image.filters:
