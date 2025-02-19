@@ -1,5 +1,6 @@
 import os
 import random
+import string
 from typing import Dict
 import piexif
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
@@ -56,14 +57,15 @@ class UniqueManager:
         Returns:
             str: Unique text.
         """
-        for original, replacement in self.replacements.items():
-            text = text.replace(original, replacement)
 
         if self.config.uniqueness.text.symbol_masking:
             text = self._mask_characters(text)
 
         if self.config.uniqueness.text.rewrite:
             text = await self._rewrite_with_chatgpt(text)
+
+        for original, replacement in self.replacements.items():
+            text = text.replace(original, replacement)
 
         return text
 
@@ -211,12 +213,20 @@ class UniqueManager:
         console.log(f"Уникализация видео: {video_path}", style="cyan")
         video = VideoFileClip(video_path)
 
-        if self.config.uniqueness.video.frame_rate_variation:
-            new_fps = video.fps * 1.02
-            video = video.set_fps(new_fps)
+        # Установка параметров для совместимости с мобильными устройствами
+        output_params = {
+            "codec": "libx264",  # Кодек H.264
+            "fps": video.fps,    # Сохраняем исходный FPS
+            "preset": "medium",  # Баланс между скоростью и качеством
+            "bitrate": "1000k",  # Битрейт (можно настроить в зависимости от разрешения)
+            "ffmpeg_params": [
+                "-profile:v", "baseline",  # Профиль для максимальной совместимости
+                "-pix_fmt", "yuv420p",     # Формат пикселей для старых устройств
+            ]
+        }
 
         unique_video_path = f"unique_{os.path.basename(video_path)}"
-        video.write_videofile(unique_video_path, codec="libx264")
+        video.write_videofile(unique_video_path, **output_params)
 
         if self.config.uniqueness.video.metadata == "replace":
             self._replace_video_metadata(unique_video_path)
@@ -225,24 +235,39 @@ class UniqueManager:
 
         return unique_video_path
 
+    def _generate_random_string(self, length: int = 8) -> str:
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
     def _replace_video_metadata(self, video_path: str) -> None:
         """
-        Replaces video metadata with custom data.
+        Replaces video metadata with custom random data.
 
         Args:
             video_path (str): Path to the video.
         """
         try:
+            make = self._generate_random_string(10)
+            model = self._generate_random_string(8)
+            serial_number = self._generate_random_string(12)
+
             command = [
                 "ffmpeg",
                 "-loglevel", "error",
                 "-i", video_path,
-                "-metadata", "artist=UniqueManager",
-                "-metadata", "software=ContentCloner",
+                "-metadata", f"artist=UniqueManager",
+                "-metadata", f"software=ContentCloner",
+                "-metadata", f"make={make}",
+                "-metadata", f"model={model}",
+                "-metadata", f"serial_number={serial_number}",
                 "-c", "copy",
                 f"temp_{video_path}"
             ]
-            subprocess.run(command, check=True)
+
+            # Выполняем команду и подавляем вывод
+            with open(os.devnull, 'w') as devnull:
+                subprocess.run(command, check=True, stdout=devnull, stderr=devnull)
+
+            # Замена оригинального файла
             os.replace(f"temp_{video_path}", video_path)
             console.print(f"Метаданные видео {video_path} заменены.", style="green")
         except Exception as e:
