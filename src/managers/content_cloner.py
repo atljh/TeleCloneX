@@ -125,7 +125,14 @@ class ContentCloner:
                 for message in messages:
                     if not self._running:
                         break
+                    if message.grouped_id and message.grouped_id in self.processed_albums:
+                        continue
+
                     await self._process_message(client, message)
+
+                    if message.grouped_id:
+                        self.processed_albums.append(message.grouped_id)
+
                     await self._random_delay(self.post_delay)
             except FloodWaitError as e:
                 console.print(f"Лимиты превышены. Ожидание {e.seconds} секунд...", style="yellow")
