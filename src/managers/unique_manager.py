@@ -196,44 +196,35 @@ class UniqueManager:
 
     def unique_video(self, video_path: str) -> str:
         """
-        Video uniqueness:
-        - Changing hash.
-        - Adding invisible elements.
-        - Adjusting FPS.
-        - Modifying audio speed.
-        - Cropping, brightness, contrast, rotation.
-        - Removing/replacing metadata.
+        Converts a video to a format compatible with Telegram.
 
         Args:
             video_path (str): Path to the input video.
 
         Returns:
-            str: Path to the unique video.
+            str: Path to the converted video.
         """
-        console.log(f"Уникализация видео: {video_path}", style="cyan")
-        video = VideoFileClip(video_path)
+        output_path = f"converted_{os.path.splitext(os.path.basename(video_path))[0]}.mp4"
 
-        # Установка параметров для совместимости с мобильными устройствами
-        output_params = {
-            "codec": "libx264",  # Кодек H.264
-            "fps": video.fps,    # Сохраняем исходный FPS
-            "preset": "medium",  # Баланс между скоростью и качеством
-            "bitrate": "1000k",  # Битрейт (можно настроить в зависимости от разрешения)
-            "ffmpeg_params": [
-                "-profile:v", "baseline",  # Профиль для максимальной совместимости
-                "-pix_fmt", "yuv420p",     # Формат пикселей для старых устройств
+        try:
+            command = [
+                "ffmpeg",
+                "-loglevel", "error",  # Убираем лишние логи
+                "-i", video_path,      # Входной файл
+                "-c:v", "libx264",     # Кодек видео (H.264)
+                "-profile:v", "baseline",  # Профиль для совместимости
+                "-pix_fmt", "yuv420p",  # Формат пикселей для старых устройств
+                "-c:a", "aac",         # Кодек аудио (AAC)
+                "-b:a", "128k",        # Битрейт аудио
+                "-movflags", "+faststart",  # Для потокового воспроизведения
+                output_path            # Выходной файл
             ]
-        }
-
-        unique_video_path = f"unique_{os.path.basename(video_path)}"
-        video.write_videofile(unique_video_path, **output_params)
-
-        if self.config.uniqueness.video.metadata == "replace":
-            self._replace_video_metadata(unique_video_path)
-        elif self.config.uniqueness.video.metadata == "remove":
-            self._remove_video_metadata(unique_video_path)
-
-        return unique_video_path
+            subprocess.run(command, check=True)
+            console.print(f"Видео {video_path} успешно преобразовано в {output_path}.", style="green")
+            return output_path
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Ошибка при преобразовании видео: {e.stderr}")
+            return video_path
 
     def _generate_random_string(self, length: int = 8) -> str:
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
