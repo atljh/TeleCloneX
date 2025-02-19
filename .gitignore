@@ -12,3 +12,5 @@ dist
 *.txt
 .pytest_cache
 downloads/
+*.jpg
+.DS_Store
