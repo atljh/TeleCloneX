@@ -1,16 +1,8 @@
 import os
-import asyncio
-import random
-from collections import deque
 from typing import Dict, List
-from telethon import TelegramClient, events
-from telethon.tl.types import (
-    MessageMediaPhoto, MessageMediaDocument, DocumentAttributeVideo
-)
-from telethon.errors import FloodWaitError
+from telethon import TelegramClient
 from src.logger import console, logger
-from src.managers import FileManager
-from src.managers.unique_manager import UniqueManager
+
 
 class ContentPublisher:
     """
@@ -40,7 +32,11 @@ class ContentPublisher:
                 caption = caption[:1021] + "..."
 
             if content.get("photo"):
-                await self.client.send_file(target_channel, content["photo"], caption=caption)
+                await self.client.send_file(
+                    target_channel,
+                    content["photo"],
+                    caption=caption
+                )
                 self._delete_file(content["photo"])
             elif content.get("video"):
                 if content.get("is_round"):
@@ -107,6 +103,7 @@ class ContentPublisher:
                 os.remove(original_file)
                 console.print(f"Файл {original_file} удален.", style="green")
             else:
-                console.print(f"Файл {original_file} не найден.", style="yellow")
+                pass
+                # console.print(f"Файл {original_file} не найден.", style="yellow")
         except Exception as e:
             logger.error(f"Ошибка при удалении файла {file_path}: {e}")

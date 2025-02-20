@@ -11,6 +11,7 @@ from src.managers.clone import (
     ContentExtractor, ContentPublisher, ContentUniquifier
 )
 
+
 class ContentCloner:
     """
     Основной класс, управляющий процессом клонирования.
@@ -203,18 +204,20 @@ class ContentCloner:
         Обрабатывает альбом сообщений (группу медиафайлов).
         """
         try:
+            if not message.grouped_id:
+                console.print("Сообщение не является частью альбома.", style="yellow")
+                return
+            await asyncio.sleep(3)
             all_messages = []
-            async for msg in self.client.iter_messages(
-                message.chat_id,
-                limit=20
-            ):
+            async for msg in self.client.iter_messages(message.chat_id, limit=200):
                 all_messages.append(msg)
 
             album_messages = [msg for msg in all_messages if msg.grouped_id == message.grouped_id]
-            album_messages.reverse()
             if not album_messages:
                 console.print(f"Не удалось найти сообщения альбома с grouped_id: {message.grouped_id}", style="yellow")
                 return
+
+            album_messages.reverse()
             console.print(f"Найден альбом из {len(album_messages)} сообщений.", style="blue")
 
             unique_contents = []
@@ -222,6 +225,8 @@ class ContentCloner:
                 content = await self.content_extractor.extract_content(msg)
                 unique_content = await self.content_uniquifier.make_content_unique(content)
                 unique_contents.append(unique_content)
+                await asyncio.sleep(1)
+
             for channel in self.target_channels:
                 if not await self._check_channel_access(channel):
                     console.print(f"Канал {channel} недоступен. Пропускаем.", style="yellow")
@@ -229,6 +234,8 @@ class ContentCloner:
 
                 await self.content_publisher.publish_album(unique_contents, channel)
                 console.print(f"Альбом опубликован в канал {channel}", style="green")
+                await asyncio.sleep(1)
+
         except Exception as e:
             logger.error(f"Ошибка при обработке альбома: {e}")
 

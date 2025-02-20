@@ -28,12 +28,10 @@ class ImageUniquenessManager:
         console.log(f"Уникализация изображения: {image_path}", style="cyan")
         image = Image.open(image_path)
 
-        # Кадрирование
         width, height = image.size
         crop_pixels = random.randint(*self.config.uniqueness.image.crop)
         image = image.crop((crop_pixels, crop_pixels, width - crop_pixels, height - crop_pixels))
 
-        # Яркость и контраст
         enhancer = ImageEnhance.Brightness(image)
         brightness_factor = random.uniform(1 + self.config.uniqueness.image.brightness[0] / 100,
                                           1 + self.config.uniqueness.image.brightness[1] / 100)
@@ -44,20 +42,15 @@ class ImageUniquenessManager:
                                          1 + self.config.uniqueness.image.contrast[1] / 100)
         image = enhancer.enhance(contrast_factor)
 
-        # Поворот
         if self.config.uniqueness.image.rotation:
             angle = random.uniform(-0.3, 0.3)
             image = image.rotate(angle)
 
-        # Фильтры
         if self.config.uniqueness.image.filters:
             image = image.filter(ImageFilter.GaussianBlur(radius=0.5))
 
-        # Сохранение уникализированного изображения
         unique_image_path = f"unique_{os.path.basename(image_path)}"
         image.save(unique_image_path)
-
-        # Работа с метаданными
         if self.config.uniqueness.image.metadata == "replace":
             unique_image_path = self._replace_image_metadata(unique_image_path)
         elif self.config.uniqueness.image.metadata == "remove":
@@ -67,43 +60,39 @@ class ImageUniquenessManager:
 
     def _replace_image_metadata(self, image_path: str) -> str:
         """
-        Replaces image metadata with random data.
+        Заменяет метаданные изображения на случайные значения и перезаписывает исходное изображение.
 
         Args:
-            image_path (str): Path to the image.
+            image_path (str): Путь к изображению.
 
         Returns:
-            str: Path to the new image with replaced metadata.
+            str: Путь к обновленному изображению.
         """
         try:
-            img = Image.open(image_path)
+            metadata = self.generate_random_metadata()
 
-            # Проверяем, есть ли метаданные
-            if "exif" not in img.info:
-                console.print(f"Изображение {image_path} не содержит метаданных. Пропускаем замену.", style="yellow")
-                return image_path
+            image = Image.open(image_path)
 
-            # Загружаем и заменяем метаданные
-            exif_dict = piexif.load(img.info["exif"])
-            exif_dict["0th"][piexif.ImageIFD.Artist] = self._generate_random_string(10)
-            exif_dict["0th"][piexif.ImageIFD.Software] = self._generate_random_string(12)
-            exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = self._generate_random_date().strftime("%Y:%m:%d %H:%M:%S")
+            exif_dict = {
+                "0th": {},
+                "Exif": {},
+                "GPS": {},
+                "1st": {},
+                "thumbnail": None,
+            }
+
+            exif_dict["0th"][piexif.ImageIFD.Make] = metadata["Make"].encode("utf-8")
+            exif_dict["0th"][piexif.ImageIFD.Model] = metadata["Model"].encode("utf-8")
+            exif_dict["Exif"][piexif.ExifIFD.BodySerialNumber] = metadata["SerialNumber"].encode("utf-8")
+
             exif_bytes = piexif.dump(exif_dict)
 
-            # Сохраняем изображение с новыми метаданными
-            new_file_name = self._generate_random_string(15) + ".jpg"
-            new_file_path = os.path.join(os.path.dirname(image_path), new_file_name)
-            img.save(new_file_path, "jpeg", exif=exif_bytes)
+            image.save(image_path, "jpeg", exif=exif_bytes, quality=95)
 
-            # Устанавливаем случайную дату изменения файла
-            random_date = self._generate_random_date()
-            mod_time = random_date.timestamp()
-            os.utime(new_file_path, (mod_time, mod_time))
-
-            return new_file_path
+            return image_path
         except Exception as e:
             logger.error(f"Ошибка при замене метаданных изображения: {e}")
-            return image_path
+            raise
 
     def _remove_image_metadata(self, image_path: str) -> None:
         """
@@ -116,13 +105,24 @@ class ImageUniquenessManager:
             img = Image.open(image_path)
 
             if "exif" not in img.info:
-                console.print(f"Изображение {image_path} не содержит метаданных. Пропускаем удаление.", style="yellow")
                 return
 
             piexif.remove(image_path)
             console.print(f"Метаданные изображения {image_path} удалены.", style="green")
         except Exception as e:
             logger.error(f"Ошибка при удалении метаданных изображения: {e}")
+
+    def generate_random_metadata(self):
+        """
+        Generates random metadata for Make, Model, and SerialNumber.
+
+        Returns:
+            dict: A dictionary containing random values for Make, Model, and SerialNumber.
+        """
+        make = random.choice(["Canon", "Nikon", "Sony", "Fujifilm", "Panasonic", "Olympus", "Leica", "Pentax"])
+        model = f"{make} Model-{random.randint(100, 999)}"
+        serial_number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+        return {"Make": make, "Model": model, "SerialNumber": serial_number}
 
     def _generate_random_string(self, length: int = 8) -> str:
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))

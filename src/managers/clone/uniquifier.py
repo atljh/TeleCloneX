@@ -59,6 +59,7 @@ class ContentUniquifier:
             command = [
                 "ffmpeg",
                 "-loglevel", "error",
+                "-y",
                 "-i", audio_path,
                 "-c:a", "libopus",
                 ogg_path
