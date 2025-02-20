@@ -1,5 +1,4 @@
 import os
-import asyncio
 from pathlib import Path
 
 from telethon import TelegramClient
