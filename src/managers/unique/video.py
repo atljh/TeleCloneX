@@ -65,15 +65,21 @@ class VideoUniquenessManager:
 
             command = [
                 "ffmpeg",
-                "-loglevel", "error",
-                "-i", video_path,
-                "-metadata", f"artist=UniqueManager",
+                "-loglevel", "error",  # Убираем лишние логи
+                "-i", video_path,  # Входной файл
+                "-metadata", f"artist=UniqueManager",  # Метаданные
                 "-metadata", f"software=ContentCloner",
                 "-metadata", f"make={make}",
                 "-metadata", f"model={model}",
                 "-metadata", f"serial_number={serial_number}",
-                "-c", "copy",
-                f"temp_{video_path}"
+                "-vf", "fps=30",  # Устанавливаем FPS на 30 (рекомендуется для Telegram)
+                "-c:v", "libx264",  # Кодек видео H.264
+                "-preset", "fast",  # Баланс между скоростью и качеством
+                "-crf", "23",  # Качество видео (меньше значение = лучше качество, 23 — оптимально)
+                "-movflags", "+faststart",  # Для быстрого старта воспроизведения
+                "-c:a", "aac",  # Кодек аудио AAC
+                "-b:a", "128k",  # Битрейт аудио (128 kbps — рекомендуется)
+                f"temp_{video_path}"  # Выходной файл
             ]
             subprocess.run(command, check=True)
             os.replace(f"temp_{video_path}", video_path)

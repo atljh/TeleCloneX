@@ -77,17 +77,25 @@ class ImageUniquenessManager:
         """
         try:
             img = Image.open(image_path)
-            exif_dict = piexif.load(img.info.get("exif", b""))
+
+            # Проверяем, есть ли метаданные
+            if "exif" not in img.info:
+                console.print(f"Изображение {image_path} не содержит метаданных. Пропускаем замену.", style="yellow")
+                return image_path
+
+            # Загружаем и заменяем метаданные
+            exif_dict = piexif.load(img.info["exif"])
             exif_dict["0th"][piexif.ImageIFD.Artist] = self._generate_random_string(10)
             exif_dict["0th"][piexif.ImageIFD.Software] = self._generate_random_string(12)
             exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = self._generate_random_date().strftime("%Y:%m:%d %H:%M:%S")
             exif_bytes = piexif.dump(exif_dict)
 
+            # Сохраняем изображение с новыми метаданными
             new_file_name = self._generate_random_string(15) + ".jpg"
             new_file_path = os.path.join(os.path.dirname(image_path), new_file_name)
-
             img.save(new_file_path, "jpeg", exif=exif_bytes)
 
+            # Устанавливаем случайную дату изменения файла
             random_date = self._generate_random_date()
             mod_time = random_date.timestamp()
             os.utime(new_file_path, (mod_time, mod_time))
@@ -105,11 +113,16 @@ class ImageUniquenessManager:
             image_path (str): Path to the image.
         """
         try:
+            img = Image.open(image_path)
+
+            if "exif" not in img.info:
+                console.print(f"Изображение {image_path} не содержит метаданных. Пропускаем удаление.", style="yellow")
+                return
+
             piexif.remove(image_path)
             console.print(f"Метаданные изображения {image_path} удалены.", style="green")
         except Exception as e:
             logger.error(f"Ошибка при удалении метаданных изображения: {e}")
-            console.print(f"Ошибка при удалении метаданных изображения: {e}", style="red")
 
     def _generate_random_string(self, length: int = 8) -> str:
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
