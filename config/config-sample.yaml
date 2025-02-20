@@ -36,6 +36,7 @@ uniqueness:
     watermark: true  # Невидимые элементы (сетка и т. д.)
     frame_rate_variation: true  # Незначительное изменение FPS
     audio_speed: [2, 4]  # Изменение скорости аудио (%)
+    metadata: "replace"  # или "remove"
 
 # Настройки задержек
 timeouts:
