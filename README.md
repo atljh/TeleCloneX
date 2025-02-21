@@ -69,12 +69,13 @@
 
 ## Installation
 ```bash
-pip install -r requirements.txt
+
+python install.py
 ```
 
 ## Running the Program
 ```bash
-python teleclonex.py
+python main.py
 ```
 
 ## License
